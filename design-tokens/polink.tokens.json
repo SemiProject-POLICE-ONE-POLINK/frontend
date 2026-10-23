@@ -1,0 +1,710 @@
+{
+  "$description": "POLINK 디자인 토큰 v1 — HTML 목업(v42)과 화면 정의서 v1.3에서 추출. 2026-10-22 · Police one",
+  "color": {
+    "light": {
+      "bg": {
+        "$type": "color",
+        "$value": "#EDF0F5",
+        "$description": "페이지 바탕"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "카드·모달 바탕"
+      },
+      "surface-2": {
+        "$type": "color",
+        "$value": "#F5F7FA",
+        "$description": "표 머리글·태그 등 한 단계 낮은 바탕"
+      },
+      "ink": {
+        "$type": "color",
+        "$value": "#15213A",
+        "$description": "본문 글자"
+      },
+      "ink-2": {
+        "$type": "color",
+        "$value": "#4B5772",
+        "$description": "보조 글자·라벨"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "#8792A6",
+        "$description": "흐린 글자·placeholder"
+      },
+      "line": {
+        "$type": "color",
+        "$value": "#DAE0E9",
+        "$description": "테두리·구분선"
+      },
+      "navy": {
+        "$type": "color",
+        "$value": "#16284A",
+        "$description": "사이드바 바탕"
+      },
+      "navy-2": {
+        "$type": "color",
+        "$value": "#1F3560",
+        "$description": "사이드바 선택·hover"
+      },
+      "navy-ink": {
+        "$type": "color",
+        "$value": "#DCE4F2",
+        "$description": "사이드바 글자"
+      },
+      "navy-dim": {
+        "$type": "color",
+        "$value": "#8C9BB8",
+        "$description": "사이드바 흐린 글자"
+      },
+      "gold": {
+        "$type": "color",
+        "$value": "#A9781F",
+        "$description": "강조(eyebrow, 번호, AI 칩, 직접 등록)"
+      },
+      "gold-soft": {
+        "$type": "color",
+        "$value": "#F6EBD3",
+        "$description": "gold 연한 바탕"
+      },
+      "blue": {
+        "$type": "color",
+        "$value": "#2A56C9",
+        "$description": "주 버튼·링크·포커스·진행"
+      },
+      "blue-soft": {
+        "$type": "color",
+        "$value": "#E4EBFB",
+        "$description": "blue 연한 바탕"
+      },
+      "ok": {
+        "$type": "color",
+        "$value": "#1D7F55",
+        "$description": "완료·채택"
+      },
+      "ok-soft": {
+        "$type": "color",
+        "$value": "#DFF2E8",
+        "$description": "ok 연한 바탕"
+      },
+      "warn": {
+        "$type": "color",
+        "$value": "#A8650F",
+        "$description": "대기·주의"
+      },
+      "warn-soft": {
+        "$type": "color",
+        "$value": "#FBEBD3",
+        "$description": "warn 연한 바탕"
+      },
+      "crit": {
+        "$type": "color",
+        "$value": "#B93129",
+        "$description": "반려·기각·오류"
+      },
+      "crit-soft": {
+        "$type": "color",
+        "$value": "#FBE3E1",
+        "$description": "crit 연한 바탕"
+      },
+      "idle": {
+        "$type": "color",
+        "$value": "#5E6A80",
+        "$description": "취소·비활성"
+      },
+      "idle-soft": {
+        "$type": "color",
+        "$value": "#E8ECF2",
+        "$description": "idle 연한 바탕"
+      },
+      "on-primary": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "blue 바탕 위 글자"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "rgba(9,16,28,.5)",
+        "$description": "모달 뒤 어두운 막"
+      },
+      "hero-from": {
+        "$type": "color",
+        "$value": "#13233F",
+        "$description": "수사 보드 헤더 그라데이션 시작"
+      },
+      "hero-mid": {
+        "$type": "color",
+        "$value": "#1B3157",
+        "$description": "수사 보드 헤더 그라데이션 중간"
+      },
+      "hero-to": {
+        "$type": "color",
+        "$value": "#22406F",
+        "$description": "수사 보드 헤더 그라데이션 끝"
+      },
+      "hero-ink": {
+        "$type": "color",
+        "$value": "#E8EDF5",
+        "$description": "헤더 위 글자"
+      },
+      "hero-accent": {
+        "$type": "color",
+        "$value": "#D9A94A",
+        "$description": "헤더 위 금색 강조"
+      }
+    },
+    "dark": {
+      "bg": {
+        "$type": "color",
+        "$value": "#0D131E"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "#151D2B"
+      },
+      "surface-2": {
+        "$type": "color",
+        "$value": "#1B2536"
+      },
+      "ink": {
+        "$type": "color",
+        "$value": "#E5EAF3"
+      },
+      "ink-2": {
+        "$type": "color",
+        "$value": "#A4AEC1"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "#76829A"
+      },
+      "line": {
+        "$type": "color",
+        "$value": "#28344A"
+      },
+      "navy": {
+        "$type": "color",
+        "$value": "#09101C"
+      },
+      "navy-2": {
+        "$type": "color",
+        "$value": "#15213A"
+      },
+      "navy-ink": {
+        "$type": "color",
+        "$value": "#DCE4F2"
+      },
+      "navy-dim": {
+        "$type": "color",
+        "$value": "#7E8CA8"
+      },
+      "gold": {
+        "$type": "color",
+        "$value": "#DDAA4C"
+      },
+      "gold-soft": {
+        "$type": "color",
+        "$value": "#3A2E17"
+      },
+      "blue": {
+        "$type": "color",
+        "$value": "#7D9CFF"
+      },
+      "blue-soft": {
+        "$type": "color",
+        "$value": "#1F2B4A"
+      },
+      "ok": {
+        "$type": "color",
+        "$value": "#4CC28C"
+      },
+      "ok-soft": {
+        "$type": "color",
+        "$value": "#16342A"
+      },
+      "warn": {
+        "$type": "color",
+        "$value": "#E6A44A"
+      },
+      "warn-soft": {
+        "$type": "color",
+        "$value": "#3A2A14"
+      },
+      "crit": {
+        "$type": "color",
+        "$value": "#F2766D"
+      },
+      "crit-soft": {
+        "$type": "color",
+        "$value": "#3E1C1B"
+      },
+      "idle": {
+        "$type": "color",
+        "$value": "#A2ADC0"
+      },
+      "idle-soft": {
+        "$type": "color",
+        "$value": "#242E40"
+      },
+      "on-primary": {
+        "$type": "color",
+        "$value": "#0D131E"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "rgba(0,0,0,.6)"
+      },
+      "hero-from": {
+        "$type": "color",
+        "$value": "#13233F"
+      },
+      "hero-mid": {
+        "$type": "color",
+        "$value": "#1B3157"
+      },
+      "hero-to": {
+        "$type": "color",
+        "$value": "#22406F"
+      },
+      "hero-ink": {
+        "$type": "color",
+        "$value": "#E8EDF5"
+      },
+      "hero-accent": {
+        "$type": "color",
+        "$value": "#D9A94A"
+      }
+    }
+  },
+  "status": {
+    "wait": {
+      "fg": {
+        "$value": "{color.warn}"
+      },
+      "bg": {
+        "$value": "{color.warn-soft}"
+      },
+      "$description": "대기 중, 분실 중, 신청"
+    },
+    "run": {
+      "fg": {
+        "$value": "{color.blue}"
+      },
+      "bg": {
+        "$value": "{color.blue-soft}"
+      },
+      "$description": "수사 중, 보관 중, 인계 대기, 승인, 미검토"
+    },
+    "done": {
+      "fg": {
+        "$value": "{color.ok}"
+      },
+      "bg": {
+        "$value": "{color.ok-soft}"
+      },
+      "$description": "종결, 반환 완료, 채택, 인계 완료"
+    },
+    "cancel": {
+      "fg": {
+        "$value": "{color.idle}"
+      },
+      "bg": {
+        "$value": "{color.idle-soft}"
+      },
+      "$description": "취소"
+    },
+    "crit": {
+      "fg": {
+        "$value": "{color.crit}"
+      },
+      "bg": {
+        "$value": "{color.crit-soft}"
+      },
+      "$description": "반려, 기각"
+    }
+  },
+  "font": {
+    "family": {
+      "display": {
+        "$type": "fontFamily",
+        "$value": "\"Black Han Sans\", \"IBM Plex Sans KR\", sans-serif"
+      },
+      "body": {
+        "$type": "fontFamily",
+        "$value": "\"IBM Plex Sans KR\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, sans-serif"
+      },
+      "mono": {
+        "$type": "fontFamily",
+        "$value": "\"IBM Plex Mono\", ui-monospace, \"SFMono-Regular\", Menlo, monospace"
+      }
+    },
+    "style": {
+      "display": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.display}",
+          "fontSize": "28px",
+          "fontWeight": 400,
+          "lineHeight": 1.15,
+          "letterSpacing": ".01em"
+        },
+        "$description": "페이지 제목(h1) (목업: .page-head h1 28px)"
+      },
+      "number": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.mono}",
+          "fontSize": "28px",
+          "fontWeight": 600,
+          "lineHeight": 1.2,
+          "letterSpacing": "-.01em"
+        },
+        "$description": "KPI 숫자 (목업: .kpi .v 28px)"
+      },
+      "title1": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "22px",
+          "fontWeight": 700,
+          "lineHeight": 1.3,
+          "letterSpacing": "0"
+        },
+        "$description": "큰 카드 제목(AI 추론 안내) (목업: .ai-cta h2 22px)"
+      },
+      "title2": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "18px",
+          "fontWeight": 700,
+          "lineHeight": 1.35,
+          "letterSpacing": "0"
+        },
+        "$description": "모달 제목·섹션 제목 (목업: 18px)"
+      },
+      "title3": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "15px",
+          "fontWeight": 700,
+          "lineHeight": 1.4,
+          "letterSpacing": "0"
+        },
+        "$description": "카드 제목(h2) (목업: .nc-h h2 15px · h2 14.5px)"
+      },
+      "body1": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "14px",
+          "fontWeight": 400,
+          "lineHeight": 1.55,
+          "letterSpacing": "0"
+        },
+        "$description": "기본 본문 (목업: body 14px)"
+      },
+      "body2": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "13px",
+          "fontWeight": 400,
+          "lineHeight": 1.5,
+          "letterSpacing": "0"
+        },
+        "$description": "표 셀·버튼·입력·상세 정보 (목업: 13px · 13.5px)"
+      },
+      "label": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "12.5px",
+          "fontWeight": 600,
+          "lineHeight": 1.4,
+          "letterSpacing": "0"
+        },
+        "$description": "폼 라벨·작은 강조 (목업: .field label 12.5px)"
+      },
+      "caption1": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "12px",
+          "fontWeight": 400,
+          "lineHeight": 1.45,
+          "letterSpacing": "0"
+        },
+        "$description": "보조 설명·카드 부제·KPI 라벨 (목업: 12px)"
+      },
+      "caption2": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.body}",
+          "fontSize": "11.5px",
+          "fontWeight": 600,
+          "lineHeight": 1.5,
+          "letterSpacing": ".01em"
+        },
+        "$description": "상태 배지·태그·표 머리글 (목업: .pill .tag th 11.5px)"
+      },
+      "eyebrow": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.mono}",
+          "fontSize": "11px",
+          "fontWeight": 500,
+          "lineHeight": 1.4,
+          "letterSpacing": ".08em"
+        },
+        "$description": "페이지 상단 분류(대문자) (목업: .eyebrow 11px)"
+      },
+      "micro": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.family.mono}",
+          "fontSize": "10.5px",
+          "fontWeight": 600,
+          "lineHeight": 1.4,
+          "letterSpacing": ".04em"
+        },
+        "$description": "AI 칩·출처 칩 (목업: .ai-chip .src 10.5px)"
+      }
+    }
+  },
+  "space": {
+    "2": {
+      "$type": "dimension",
+      "$value": "2px"
+    },
+    "4": {
+      "$type": "dimension",
+      "$value": "4px"
+    },
+    "6": {
+      "$type": "dimension",
+      "$value": "6px"
+    },
+    "8": {
+      "$type": "dimension",
+      "$value": "8px"
+    },
+    "10": {
+      "$type": "dimension",
+      "$value": "10px"
+    },
+    "12": {
+      "$type": "dimension",
+      "$value": "12px"
+    },
+    "14": {
+      "$type": "dimension",
+      "$value": "14px"
+    },
+    "16": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "20": {
+      "$type": "dimension",
+      "$value": "20px"
+    },
+    "24": {
+      "$type": "dimension",
+      "$value": "24px"
+    },
+    "28": {
+      "$type": "dimension",
+      "$value": "28px"
+    },
+    "32": {
+      "$type": "dimension",
+      "$value": "32px"
+    },
+    "48": {
+      "$type": "dimension",
+      "$value": "48px"
+    }
+  },
+  "radius": {
+    "xs": {
+      "$type": "dimension",
+      "$value": "4px",
+      "$description": "칩·작은 배지"
+    },
+    "sm": {
+      "$type": "dimension",
+      "$value": "6px",
+      "$description": "태그·체크박스"
+    },
+    "md": {
+      "$type": "dimension",
+      "$value": "8px",
+      "$description": "버튼·입력 (목업 7px → 8px)"
+    },
+    "lg": {
+      "$type": "dimension",
+      "$value": "10px",
+      "$description": "카드·KPI·표"
+    },
+    "xl": {
+      "$type": "dimension",
+      "$value": "12px",
+      "$description": "모달·이미지"
+    },
+    "2xl": {
+      "$type": "dimension",
+      "$value": "14px",
+      "$description": "수사 보드 카드"
+    },
+    "3xl": {
+      "$type": "dimension",
+      "$value": "16px",
+      "$description": "수사 보드 헤더"
+    },
+    "pill": {
+      "$type": "dimension",
+      "$value": "999px",
+      "$description": "상태 배지·필터 칩"
+    },
+    "circle": {
+      "$value": "50%",
+      "$description": "아바타·점"
+    }
+  },
+  "shadow": {
+    "light": {
+      "1": {
+        "$type": "shadow",
+        "$value": "0 1px 2px rgba(21,33,58,.06), 0 4px 16px rgba(21,33,58,.06)",
+        "$description": "카드"
+      },
+      "pop": {
+        "$type": "shadow",
+        "$value": "0 8px 24px rgba(9,16,28,.18)",
+        "$description": "드롭다운·챗봇 패널"
+      },
+      "modal": {
+        "$type": "shadow",
+        "$value": "0 20px 60px rgba(0,0,0,.3)",
+        "$description": "모달"
+      },
+      "focus": {
+        "$type": "shadow",
+        "$value": "0 0 0 4px var(--color-blue-soft)",
+        "$description": "입력 포커스 링"
+      }
+    },
+    "dark": {
+      "1": {
+        "$type": "shadow",
+        "$value": "0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25)"
+      },
+      "pop": {
+        "$type": "shadow",
+        "$value": "0 8px 24px rgba(0,0,0,.4)"
+      },
+      "modal": {
+        "$type": "shadow",
+        "$value": "0 20px 60px rgba(0,0,0,.5)"
+      },
+      "focus": {
+        "$type": "shadow",
+        "$value": "0 0 0 4px var(--color-blue-soft)"
+      }
+    }
+  },
+  "layout": {
+    "sidebar-w": {
+      "$type": "dimension",
+      "$value": "240px"
+    },
+    "content-max": {
+      "$type": "dimension",
+      "$value": "1280px"
+    },
+    "content-max-wide": {
+      "$type": "dimension",
+      "$value": "1760px"
+    },
+    "page-pad": {
+      "$type": "dimension",
+      "$value": "28px"
+    },
+    "header-h": {
+      "$type": "dimension",
+      "$value": "56px"
+    },
+    "modal-w": {
+      "$type": "dimension",
+      "$value": "560px"
+    },
+    "modal-w-wide": {
+      "$type": "dimension",
+      "$value": "820px"
+    },
+    "chat-panel-w": {
+      "$type": "dimension",
+      "$value": "380px"
+    }
+  },
+  "breakpoint": {
+    "xl": {
+      "$type": "dimension",
+      "$value": "1450px",
+      "$description": "max-width 기준. CSS 변수는 미디어 쿼리에 못 쓰므로 숫자를 직접 적는다"
+    },
+    "lg": {
+      "$type": "dimension",
+      "$value": "1300px",
+      "$description": "max-width 기준. CSS 변수는 미디어 쿼리에 못 쓰므로 숫자를 직접 적는다"
+    },
+    "md": {
+      "$type": "dimension",
+      "$value": "1100px",
+      "$description": "max-width 기준. CSS 변수는 미디어 쿼리에 못 쓰므로 숫자를 직접 적는다"
+    },
+    "sm": {
+      "$type": "dimension",
+      "$value": "860px",
+      "$description": "max-width 기준. CSS 변수는 미디어 쿼리에 못 쓰므로 숫자를 직접 적는다"
+    },
+    "xs": {
+      "$type": "dimension",
+      "$value": "640px",
+      "$description": "max-width 기준. CSS 변수는 미디어 쿼리에 못 쓰므로 숫자를 직접 적는다"
+    }
+  },
+  "z": {
+    "header": {
+      "$value": 5
+    },
+    "chat": {
+      "$value": 40
+    },
+    "chat-panel": {
+      "$value": 45
+    },
+    "modal": {
+      "$value": 50
+    },
+    "toast": {
+      "$value": 60
+    }
+  },
+  "motion": {
+    "fast": {
+      "$type": "duration",
+      "$value": ".12s"
+    },
+    "base": {
+      "$type": "duration",
+      "$value": ".15s"
+    },
+    "slow": {
+      "$type": "duration",
+      "$value": ".25s"
+    }
+  }
+}
