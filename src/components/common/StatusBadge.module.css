@@ -1,0 +1,40 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-2) var(--space-10);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-circle);
+    background: currentColor;
+}
+
+.wait {
+    color: var(--status-wait-fg);
+    background: var(--status-wait-bg);
+}
+
+.run {
+    color: var(--status-run-fg);
+    background: var(--status-run-bg);
+}
+
+.done {
+    color: var(--status-done-fg);
+    background: var(--status-done-bg);
+}
+
+.cancel {
+    color: var(--status-cancel-fg);
+    background: var(--status-cancel-bg);
+}
+
+.crit {
+    color: var(--status-crit-fg);
+    background: var(--status-crit-bg);
+}

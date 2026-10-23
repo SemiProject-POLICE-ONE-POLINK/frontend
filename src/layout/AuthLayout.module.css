@@ -1,0 +1,113 @@
+.wrap {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    background: var(--color-bg);
+}
+
+.art {
+    background: var(--color-navy);
+    color: var(--color-navy-ink);
+    padding: var(--space-48) 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-32);
+}
+
+.brand {
+    display: flex;
+    gap: var(--space-12);
+    align-items: center;
+    color: var(--color-navy-dim);
+}
+
+.brandEn {
+    color: var(--color-hero-accent);
+    letter-spacing: 0.12em;
+}
+
+.headline {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(30px, 4vw, 46px);
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+}
+
+.lead {
+    margin-top: var(--space-14);
+    max-width: 44ch;
+    color: var(--color-navy-dim);
+}
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-10);
+    max-width: 520px;
+}
+
+.features li {
+    border: 1px solid var(--color-navy-2);
+    border-radius: var(--radius-md);
+    padding: var(--space-10) var(--space-12);
+}
+
+.features b {
+    display: block;
+    color: var(--color-hero-accent);
+}
+
+.formSide {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: var(--space-48) 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-20);
+}
+
+.tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--color-line);
+}
+
+.tab {
+    padding: var(--space-12) var(--space-12) var(--space-10);
+    color: var(--color-muted);
+    border-bottom: 2px solid transparent;
+}
+
+.tab:hover {
+    text-decoration: none;
+    color: var(--color-ink);
+}
+
+.tabActive {
+    color: var(--color-ink);
+    border-bottom-color: var(--color-gold);
+}
+
+@media (max-width: 860px) {
+    .wrap {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .art {
+        padding: var(--space-32) var(--space-16);
+    }
+
+    .formSide {
+        padding: var(--space-28) var(--space-16);
+    }
+}
+
+@media (max-width: 640px) {
+    .features {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

@@ -1,0 +1,48 @@
+.wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* 좁은 화면에서는 열을 짓누르지 않고 표 안에서 가로 스크롤한다. */
+.table {
+    min-width: 560px;
+}
+
+.table th {
+    text-align: left;
+    padding: var(--space-10) var(--space-14);
+    background: var(--color-surface-2);
+    color: var(--color-muted);
+    border-bottom: 1px solid var(--color-line);
+    white-space: nowrap;
+}
+
+.table td {
+    padding: var(--space-10) var(--space-14);
+    border-bottom: 1px solid var(--color-line);
+    vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.clickable {
+    cursor: pointer;
+}
+
+.clickable:hover td,
+.clickable:focus-visible td {
+    background: var(--color-surface-2);
+}
+
+.clickable:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: -2px;
+}
+
+.empty {
+    text-align: center;
+    color: var(--color-muted);
+    padding: var(--space-32) var(--space-12);
+}

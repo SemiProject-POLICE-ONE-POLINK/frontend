@@ -1,0 +1,8 @@
+.shape {
+    display: block;
+    width: 100%;
+    aspect-ratio: 594 / 558;
+    background-color: currentColor;
+    -webkit-mask: url('../../assets/conan-silhouette.png') center / contain no-repeat;
+    mask: url('../../assets/conan-silhouette.png') center / contain no-repeat;
+}

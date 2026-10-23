@@ -1,0 +1,122 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.note {
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-line);
+    color: var(--color-ink-2);
+}
+
+.fileRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 28px;
+    gap: var(--space-10);
+    align-items: center;
+    padding: var(--space-6) var(--space-10);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+}
+
+.fileRow span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fileRemove {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-muted);
+    font-size: 18px;
+}
+
+.fileRemove:hover {
+    background: var(--color-crit-soft);
+    color: var(--color-crit);
+}
+
+/* 가설 신뢰도·근거 표시 */
+.confidence {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-10);
+    align-items: center;
+    max-width: 420px;
+    color: var(--color-muted);
+}
+
+.meter {
+    height: 8px;
+    border-radius: var(--radius-xs);
+    background: var(--color-surface-2);
+    overflow: hidden;
+}
+
+.meterFill {
+    display: block;
+    height: 100%;
+    background: var(--color-blue);
+    border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+
+.basis {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.chip {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-8);
+    align-items: start;
+}
+
+.kind {
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-xs);
+    margin-top: 2px;
+}
+
+.kindEvidence {
+    background: var(--color-blue-soft);
+    color: var(--color-blue);
+}
+
+.kindStatement {
+    background: var(--color-ok-soft);
+    color: var(--color-ok);
+}
+
+.kindEtc {
+    background: var(--color-surface-2);
+    color: var(--color-ink-2);
+}
+
+.chipText {
+    color: var(--color-ink-2);
+}
+
+.chipText b {
+    color: var(--color-ink);
+}
+
+.source {
+    padding: 1px var(--space-6);
+    border-radius: var(--radius-xs);
+    background: var(--color-blue-soft);
+    color: var(--color-blue);
+}
+
+.sourceManual {
+    background: var(--color-gold-soft);
+    color: var(--color-gold);
+}
