@@ -15,6 +15,7 @@ import { Button, ButtonLink } from '../../components/common/Button';
 import { Alert, ErrorState, LoadingState } from '../../components/common/Feedback';
 import { Stack } from '../../components/common/Layout';
 import CaseProgress from '../../components/case/CaseProgress';
+import { EvidenceCard, InvestigationLogCard, LockedCard, WitnessCard } from '../../components/case/CaseRecords';
 import styles from './CasePage.module.css';
 
 // 상세 DTO에는 접수일시·종결일시·취소 사유가 없어서, 시민은 마이페이지의 내 사건 요약과 합쳐 보여 준다.
@@ -51,7 +52,13 @@ export default function CaseDetailPage() {
 
     const detail = data?.detail;
     const summary = data?.summary;
-    const isAssignedOfficer = user?.role === USER_ROLE.POLICE && detail?.assignedOfficerId === user.userId;
+    const isPolice = user?.role === USER_ROLE.POLICE;
+    const isAdmin = user?.role === USER_ROLE.ADMIN;
+    // 화면 분기는 사용성 보조다. 수사 자료 API가 담당 경찰 여부를 다시 검사한다.
+    const isAssignedOfficer = isPolice && detail?.assignedOfficerId === user.userId;
+    // 증거물·목격자·수사 기록은 담당 경찰과 관리자(ADM-002)가 본다. 시민에게는 카드 자체를 두지 않는다.
+    const canReadRecords = isAssignedOfficer || isAdmin;
+    const officerName = isAssignedOfficer ? user.name : undefined;
 
     return (
         <>
@@ -116,35 +123,52 @@ export default function CaseDetailPage() {
                                     </p>
                                 )}
                             </Card>
-                            <Card title="진행 단계">
-                                <CaseProgress status={detail.status} receivedAt={summary?.createdAt} closedAt={summary?.closedAt} />
-                            </Card>
-                            <Card title="수사 기록" subtitle="시간순">
-                                <p className={`${styles.lockNote} body2`}>
-                                    <Icon name="lock" size={14} />
-                                    {isAssignedOfficer
-                                        ? '상세 수사 기록은 수사 보드의 수사 기록 탭에서 확인합니다.'
-                                        : '수사 진행 정보만 공개됩니다. 상세 수사 기록은 담당 경찰과 관리자만 열람할 수 있습니다.'}
-                                </p>
-                            </Card>
-                        </Stack>
-                        <Card title="담당 경찰" subtitle={detail.assignedOfficerId ? '1명' : '0명'}>
-                            {detail.assignedOfficerId ? (
-                                <div className={styles.officer}>
-                                    <span className={`${styles.avatar} label`} aria-hidden="true">
-                                        경
-                                    </span>
-                                    <div>
-                                        <p className="label">{isAssignedOfficer ? `${user.name} (본인)` : '담당 경찰 배정됨'}</p>
-                                        <p className={`${styles.muted} caption1`}>
-                                            회원 번호 <span className="num">{detail.assignedOfficerId}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className={`${styles.muted} body2`}>미배정 — 관리자가 담당 경찰을 배정합니다.</p>
+                            {isCitizen && (
+                                <Card title="진행 단계">
+                                    <CaseProgress status={detail.status} receivedAt={summary?.createdAt} closedAt={summary?.closedAt} />
+                                </Card>
                             )}
-                        </Card>
+                            {canReadRecords && (
+                                <InvestigationLogCard
+                                    caseId={caseId}
+                                    officer={{ id: detail.assignedOfficerId, name: officerName ?? detail.assignedOfficerName }}
+                                />
+                            )}
+                            {isPolice && !isAssignedOfficer && (
+                                <LockedCard title="수사 기록">상세 수사 기록은 본인에게 배정된 사건만 열람할 수 있습니다.</LockedCard>
+                            )}
+                        </Stack>
+                        <Stack gap={16}>
+                            <Card title="담당 경찰" subtitle={detail.assignedOfficerId ? '1명' : '0명'}>
+                                {detail.assignedOfficerId ? (
+                                    <div className={styles.officer}>
+                                        <span className={`${styles.avatar} label`} aria-hidden="true">
+                                            경
+                                        </span>
+                                        <div>
+                                            <p className="label">{isAssignedOfficer ? `${user.name} (본인)` : '담당 경찰 배정됨'}</p>
+                                            <p className={`${styles.muted} caption1`}>
+                                                회원 번호 <span className="num">{detail.assignedOfficerId}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className={`${styles.muted} body2`}>미배정 — 관리자가 담당 경찰을 배정합니다.</p>
+                                )}
+                            </Card>
+                            {canReadRecords && (
+                                <>
+                                    <EvidenceCard caseId={caseId} officerName={officerName} />
+                                    <WitnessCard caseId={caseId} />
+                                </>
+                            )}
+                            {isPolice && !isAssignedOfficer && (
+                                <>
+                                    <LockedCard title="증거물">본인에게 배정된 사건만 열람할 수 있습니다.</LockedCard>
+                                    <LockedCard title="목격자 · 진술 이력">본인에게 배정된 사건만 열람할 수 있습니다.</LockedCard>
+                                </>
+                            )}
+                        </Stack>
                     </div>
                 </>
             )}

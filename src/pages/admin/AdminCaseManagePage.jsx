@@ -9,12 +9,12 @@ import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 import StatusBadge from '../../components/common/StatusBadge';
-import Icon from '../../components/common/Icon';
 import { Button } from '../../components/common/Button';
 import { Alert, EmptyState, ErrorState, LoadingState } from '../../components/common/Feedback';
 import { Field, Input, Textarea } from '../../components/common/Form';
 import { Stack } from '../../components/common/Layout';
 import AssignOfficerModal from '../../components/case/AssignOfficerModal';
+import { EvidenceCard, InvestigationLogCard, WitnessCard } from '../../components/case/CaseRecords';
 import modalStyles from '../../components/case/CaseModals.module.css';
 import styles from '../case/CasePage.module.css';
 
@@ -102,31 +102,30 @@ export default function AdminCaseManagePage() {
                                     <dd>{data.description}</dd>
                                 </dl>
                             </Card>
-                            <Card title="수사 기록" subtitle="시간순">
-                                <ApiPendingNote />
-                            </Card>
+                            <InvestigationLogCard caseId={caseId} officer={{ id: data.assignedOfficerId, name: data.assignedOfficerName }} />
                         </Stack>
                         <Stack gap={16}>
                             <Card title="담당 경찰" subtitle={assigned ? '1명' : '0명'}>
                                 {assigned ? (
                                     <div className={styles.officer}>
                                         <span className={`${styles.avatar} label`} aria-hidden="true">
-                                            경
+                                            {data.assignedOfficerName?.[0] ?? '경'}
                                         </span>
+                                        {/* 상세 응답에 이름이 없던 서버와도 동작하도록 이름이 없으면 회원 번호로 대신한다. */}
                                         <p className="label">
-                                            회원 번호 <span className="num">{data.assignedOfficerId}</span>
+                                            {data.assignedOfficerName ?? (
+                                                <>
+                                                    회원 번호 <span className="num">{data.assignedOfficerId}</span>
+                                                </>
+                                            )}
                                         </p>
                                     </div>
                                 ) : (
                                     <EmptyState title="미배정">관리자가 담당 경찰을 배정합니다.</EmptyState>
                                 )}
                             </Card>
-                            <Card title="증거물">
-                                <ApiPendingNote />
-                            </Card>
-                            <Card title="목격자 · 진술 이력">
-                                <ApiPendingNote />
-                            </Card>
+                            <EvidenceCard caseId={caseId} />
+                            <WitnessCard caseId={caseId} />
                         </Stack>
                     </div>
 
@@ -153,16 +152,6 @@ export default function AdminCaseManagePage() {
                 </>
             )}
         </>
-    );
-}
-
-// 관리자용 수사 기록·증거물·목격자 조회 API는 현재 담당 경찰 전용이라 관리자에게 열려 있지 않다.
-function ApiPendingNote() {
-    return (
-        <p className={`${styles.lockNote} body2`}>
-            <Icon name="lock" size={14} />
-            관리자용 조회 API가 아직 없습니다. 수사 자료 API는 현재 담당 경찰만 사용할 수 있습니다.
-        </p>
     );
 }
 
