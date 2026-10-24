@@ -3,7 +3,6 @@ import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { USER_ROLE_LABEL } from '../constants/codes';
 import { activeNavLabel } from '../config/nav';
-import { useTheme } from '../hooks/useTheme';
 import styles from './Header.module.css';
 
 export default function Header({ onMenuClick, menuOpen }) {
@@ -12,7 +11,6 @@ export default function Header({ onMenuClick, menuOpen }) {
     const closeChat = useChatStore((state) => state.setOpen);
     const navigate = useNavigate();
     const { pathname } = useLocation();
-    const { theme, toggle } = useTheme();
     const roleLabel = USER_ROLE_LABEL[user?.role] ?? '';
 
     const handleLogout = () => {
@@ -37,14 +35,6 @@ export default function Header({ onMenuClick, menuOpen }) {
                 {roleLabel} 콘솔 / <b>{activeNavLabel(user?.role, pathname)}</b>
             </p>
             <div className={styles.spacer} />
-            <button
-                type="button"
-                className={`${styles.ghost} caption2`}
-                onClick={toggle}
-                aria-label={theme === 'dark' ? '밝은 테마로 전환' : '어두운 테마로 전환'}
-            >
-                {theme === 'dark' ? '라이트' : '다크'}
-            </button>
             {user && (
                 <div className={styles.who}>
                     <span className={`${styles.avatar} label`} aria-hidden="true">
