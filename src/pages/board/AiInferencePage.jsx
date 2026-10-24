@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useOutletContext } from 'react-router';
+import { Link, useLocation, useNavigate, useOutletContext } from 'react-router';
 import { adoptHypothesis, generateHypotheses, getAdoptedHypotheses, getEvidences, getWitnesses } from '../../api/investigations';
 import { useAsync } from '../../hooks/useAsync';
 import { useSubmit } from '../../hooks/useSubmit';
@@ -12,10 +12,15 @@ import StatusBadge from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
 import { Alert, ErrorState, LoadingState } from '../../components/common/Feedback';
 import { BasisChips, Confidence } from '../../components/board/HypothesisParts';
-import { EvidenceFormModal, WitnessFormModal } from '../../components/board/BoardModals';
+import { EvidenceFormModal, LogFormModal, WitnessFormModal } from '../../components/board/BoardModals';
 import styles from './Board.module.css';
 
 const MAX_NODES = 6;
+const PREVIEW_COUNT = 4;
+
+// 목격자 요약은 최근 진술 순으로 보여 준다(POL-002 ⑦). 진술은 서버가 시간 오름차순으로 준다.
+const byLatestStatement = (witnesses) =>
+    [...witnesses].sort((a, b) => (b.statements.at(-1)?.createdAt ?? '').localeCompare(a.statements.at(-1)?.createdAt ?? ''));
 const TAG_TONES = ['c1', 'c2', 'c3'];
 
 const loadMaterials = (caseId) =>
@@ -94,7 +99,7 @@ function RelationDiagram({ nodes, candidate, index }) {
 }
 
 export default function AiInferencePage() {
-    const { caseId, board, locked, officerName, reloadBoard } = useOutletContext();
+    const { caseId, board, logs, locked, officerName, reloadBoard } = useOutletContext();
     const location = useLocation();
     const navigate = useNavigate();
     const loader = useCallback(() => loadMaterials(caseId), [caseId]);
@@ -153,6 +158,20 @@ export default function AiInferencePage() {
         materials.reload();
         reloadBoard();
     };
+
+    // 왼쪽 자료 카드는 수사 보드 메인과 같은 요약만 보여 주고, 전체 목록은 각 탭에서 본다(POL-002).
+    const allLink = (tab) => (
+        <Link className={`${styles.more} caption1`} to={`/board/${caseId}/${tab}`}>
+            전체보기 ›
+        </Link>
+    );
+    const moreLink = (total, tab, unit) =>
+        total > PREVIEW_COUNT && (
+            <Link className={`${styles.moreBar} label`} to={`/board/${caseId}/${tab}`}>
+                외 {total - PREVIEW_COUNT}
+                {unit} 더 보기 ›
+            </Link>
+        );
 
     if (materials.loading && !data) {
         return <LoadingState />;
@@ -214,50 +233,96 @@ export default function AiInferencePage() {
                                     <Button size="sm" disabled={locked} onClick={() => setModal('evidence')}>
                                         + 등록
                                     </Button>
+                                    {allLink('evidences')}
                                 </div>
                             </header>
                             <div className={styles.ncBody}>
-                                {data.evidences.map((item) => (
+                                {data.evidences.length === 0 && <p className={`${styles.muted} body2`}>등록된 증거물이 없습니다.</p>}
+                                {data.evidences.slice(0, PREVIEW_COUNT).map((item) => (
                                     <div key={item.evidenceId} className={styles.erow}>
                                         <span className={styles.thumb}>
                                             <Icon name={item.evidenceType} size={20} />
                                         </span>
                                         <div className={styles.rowBody}>
                                             <p className="label">{item.evidenceName}</p>
-                                            <p className={`${styles.muted} caption1`}>{item.description}</p>
+                                            <p className={`${styles.muted} ${styles.clamp} caption1`}>{item.description}</p>
                                         </div>
                                     </div>
                                 ))}
+                                {moreLink(data.evidences.length, 'evidences', '건')}
                             </div>
                         </section>
                         <section className={styles.nc}>
                             <header className={styles.ncHead}>
                                 <span className={`${styles.sn} ${styles.sn3} caption2`}>3</span>
                                 <h3 className="title3">
-                                    목격자 진술 <span className={`${styles.count} num`}>({statementTotal})</span>
+                                    목격자 진술 <span className={`${styles.count} num`}>({data.witnesses.length})</span>
                                 </h3>
                                 <div className={styles.ncActions}>
                                     <Button size="sm" disabled={locked} onClick={() => setModal('witness')}>
                                         + 등록
                                     </Button>
+                                    {allLink('witnesses')}
                                 </div>
                             </header>
                             <div className={styles.ncBody}>
-                                {data.witnesses.flatMap((witness) =>
-                                    witness.statements.map((statement) => (
-                                        <div key={statement.statementId} className={styles.quote}>
-                                            <p className="label">
-                                                {witness.name} <span className={`${styles.muted} caption1`}>({witness.relationship})</span>
-                                            </p>
-                                            <p className={`${styles.muted} caption1`}>
-                                                {STATEMENT_TYPE_LABEL[statement.statementType]} 진술 · <span className="num">{formatDateTime(statement.createdAt)}</span>
-                                            </p>
-                                            <p className={`${styles.quoteText} ${statement.statementType !== 'INITIAL' ? styles.quoteFix : ''} body2`}>
-                                                “{statement.content}”
-                                            </p>
-                                        </div>
-                                    ))
+                                {data.witnesses.length === 0 && <p className={`${styles.muted} body2`}>등록된 목격자가 없습니다.</p>}
+                                {byLatestStatement(data.witnesses)
+                                    .slice(0, PREVIEW_COUNT)
+                                    .map((witness) => {
+                                        const latest = witness.statements.at(-1);
+                                        return (
+                                            <div key={witness.witnessId} className={styles.quote}>
+                                                <p className="label">
+                                                    {witness.name} <span className={`${styles.muted} caption1`}>({witness.relationship})</span>
+                                                    <span className={`${styles.stCount} caption2`}>진술 {witness.statements.length}건</span>
+                                                </p>
+                                                {latest && (
+                                                    <>
+                                                        <p className={`${styles.muted} caption1`}>
+                                                            최근 {STATEMENT_TYPE_LABEL[latest.statementType]} 진술 ·{' '}
+                                                            <span className="num">{formatDateTime(latest.createdAt)}</span>
+                                                        </p>
+                                                        <p
+                                                            className={`${styles.quoteText} ${styles.clamp} ${latest.statementType !== 'INITIAL' ? styles.quoteFix : ''} body2`}
+                                                        >
+                                                            “{latest.content}”
+                                                        </p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                {moreLink(data.witnesses.length, 'witnesses', '명')}
+                            </div>
+                        </section>
+                        <section className={styles.nc}>
+                            <header className={styles.ncHead}>
+                                <span className={`${styles.sn} ${styles.sn4} caption2`}>4</span>
+                                <h3 className="title3">
+                                    수사 기록 <span className={`${styles.count} num`}>({logs.length})</span>
+                                </h3>
+                                <div className={styles.ncActions}>
+                                    <Button size="sm" disabled={locked} onClick={() => setModal('log')}>
+                                        + 작성
+                                    </Button>
+                                    {allLink('logs')}
+                                </div>
+                            </header>
+                            <div className={styles.ncBody}>
+                                {logs.length === 0 ? (
+                                    <p className={`${styles.muted} body2`}>등록된 수사 기록이 없습니다.</p>
+                                ) : (
+                                    <ul className={styles.logList}>
+                                        {logs.slice(0, PREVIEW_COUNT).map((log) => (
+                                            <li key={log.logId}>
+                                                <p className={`${styles.muted} caption1 num`}>{formatDateTime(log.investigatedAt)}</p>
+                                                <p className={`${styles.clamp} label`}>{log.content}</p>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 )}
+                                {moreLink(logs.length, 'logs', '건')}
                             </div>
                         </section>
                     </div>
@@ -285,7 +350,7 @@ export default function AiInferencePage() {
                             <>
                                 <section className={styles.nc}>
                                     <header className={styles.ncHead}>
-                                        <span className={`${styles.sn} ${styles.sn4} caption2`}>4</span>
+                                        <span className={`${styles.sn} ${styles.sn5} caption2`}>5</span>
                                         <h3 className="title3">AI 분석 결과 (사건 관계도)</h3>
                                     </header>
                                     <div className={styles.ncBody}>
@@ -298,7 +363,7 @@ export default function AiInferencePage() {
                                 </section>
                                 <section className={styles.nc}>
                                     <header className={styles.ncHead}>
-                                        <span className={`${styles.sn} ${styles.sn6} caption2`}>6</span>
+                                        <span className={`${styles.sn} ${styles.sn7} caption2`}>7</span>
                                         <h3 className="title3">정황 · 추가로 확인할 것</h3>
                                     </header>
                                     <div className={styles.ncBody}>
@@ -334,7 +399,7 @@ export default function AiInferencePage() {
                     <div className={styles.col}>
                         <section className={styles.nc}>
                             <header className={styles.ncHead}>
-                                <span className={`${styles.sn} ${styles.sn5} caption2`}>5</span>
+                                <span className={`${styles.sn} ${styles.sn6} caption2`}>6</span>
                                 <h3 className="title3">AI가 제시한 주요 가설</h3>
                                 {analysis && (
                                     <div className={styles.ncActions}>
@@ -425,6 +490,7 @@ export default function AiInferencePage() {
 
             <EvidenceFormModal open={modal === 'evidence'} caseId={caseId} officerName={officerName} onClose={() => setModal(null)} onSaved={saved} />
             <WitnessFormModal open={modal === 'witness'} caseId={caseId} onClose={() => setModal(null)} onSaved={saved} />
+            <LogFormModal open={modal === 'log'} caseId={caseId} officerName={officerName} onClose={() => setModal(null)} onSaved={saved} />
         </>
     );
 }

@@ -640,6 +640,10 @@
     background: var(--color-idle);
 }
 
+.sn7 {
+    background: var(--color-navy-2);
+}
+
 .miniDl {
     display: grid;
     grid-template-columns: 40px minmax(0, 1fr);
