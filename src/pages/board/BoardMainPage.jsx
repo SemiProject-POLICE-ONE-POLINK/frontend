@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router';
 import { CASE_TYPE_LABEL, EVIDENCE_TYPE_LABEL, STATEMENT_TYPE_LABEL } from '../../constants/codes';
 import { formatDateTime, labelOf } from '../../utils/format';
+import { useAiRun } from '../../store/aiInferenceStore';
+import { formatElapsed, useElapsed } from '../../hooks/useElapsed';
 import { buildBasisLookup } from '../../utils/hypothesis';
 import Icon from '../../components/common/Icon';
 import Tag from '../../components/common/Tag';
@@ -58,10 +60,17 @@ function ListCard({ icon, title, count, actions, children }) {
     );
 }
 
-// AI 추론 카드 아래 상태 문구. 이번 보드에서 추론을 마쳤으면 최근 분석 시각과 결과 위치를 알려 준다.
-function AiRunStatus({ locked, analysis }) {
+// AI 추론 카드 아래 상태 문구. 추론 중이면 이동해도 된다는 안내, 마쳤으면 최근 분석 시각과 결과 위치를 알려 준다.
+function AiRunStatus({ locked, run }) {
+    const { analysis } = run;
     if (locked) {
         return '수사 종결된 사건은 AI 추론을 실행할 수 없습니다';
+    }
+    if (run.status === 'running') {
+        return '다른 탭으로 이동해도 추론은 계속됩니다';
+    }
+    if (run.status === 'error') {
+        return `AI 추론에 실패했습니다. ${run.error?.message ?? ''}`;
     }
     if (analysis) {
         return (
@@ -73,9 +82,27 @@ function AiRunStatus({ locked, analysis }) {
     return 'AI 결과는 참고용이며 채택은 담당 경찰이 결정합니다';
 }
 
+// 추론 중에는 버튼이 경과 시간을 보여 주고, 누르면 진행 화면이 있는 AI 사건 추론 탭으로 간다.
+function AiRunButton({ locked, ai, onOpen }) {
+    const elapsed = useElapsed(ai.run.startedAt, ai.running ? null : ai.run.finishedAt);
+    if (ai.running) {
+        return (
+            <button type="button" className={`${styles.aiGo} title3`} onClick={onOpen}>
+                <span className={styles.goSpin} aria-hidden="true" /> 추론 중 · <span className="num">{formatElapsed(elapsed)}</span>
+            </button>
+        );
+    }
+    return (
+        <button type="button" className={`${styles.aiGo} title3`} disabled={locked} onClick={ai.start}>
+            <Icon name="ai" size={17} /> AI 추론 실행
+        </button>
+    );
+}
+
 export default function BoardMainPage() {
     const navigate = useNavigate();
-    const { caseId, board, logs, locked, officerName, reloadBoard, aiAnalysis } = useOutletContext();
+    const { caseId, board, logs, locked, officerName, reloadBoard } = useOutletContext();
+    const ai = useAiRun(caseId);
     const [modal, setModal] = useState(null);
     const { caseInfo, latestHypothesis: hypothesis } = board;
     const statementCount = board.witnesses.reduce((sum, witness) => sum + witness.statementCount, 0);
@@ -156,11 +183,9 @@ export default function BoardMainPage() {
                         <span className="caption1">진술 {statementCount}건</span>
                         <span className="caption1">수사 기록 {board.totalInvestigationLogCount}건</span>
                     </div>
-                    <button type="button" className={`${styles.aiGo} title3`} disabled={locked} onClick={() => navigate(`${base}/ai`, { state: { autorun: true } })}>
-                        <Icon name="ai" size={17} /> AI 추론 실행
-                    </button>
+                    <AiRunButton locked={locked} ai={ai} onOpen={() => navigate(`${base}/ai`)} />
                     <p className={`${styles.aiLast} caption1`}>
-                        <AiRunStatus locked={locked} analysis={aiAnalysis} />
+                        <AiRunStatus locked={locked} run={ai.run} />
                     </p>
                 </section>
 

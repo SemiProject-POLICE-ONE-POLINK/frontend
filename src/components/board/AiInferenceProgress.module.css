@@ -1,0 +1,242 @@
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    padding: var(--space-20);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-1);
+}
+
+.head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-12);
+    align-items: center;
+}
+
+.icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-lg);
+    background: var(--color-blue-soft);
+    color: var(--color-blue);
+}
+
+.headText {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.muted {
+    color: var(--color-muted);
+}
+
+/* 진행률을 알 수 없으므로 끝없이 흐르는 막대로 "멈추지 않았음"만 알린다. */
+.bar {
+    position: relative;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-2);
+    overflow: hidden;
+}
+
+.bar span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 32%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--color-blue), var(--color-gold));
+    animation: flow calc(var(--motion-slow) * 6) ease-in-out infinite;
+}
+
+@keyframes flow {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(320%);
+    }
+}
+
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.step {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    gap: var(--space-12);
+    align-items: center;
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-lg);
+}
+
+.stepText {
+    display: flex;
+    flex-direction: column;
+}
+
+.mark {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-circle);
+    border: 2px solid var(--color-line);
+}
+
+.done .mark {
+    border-color: var(--color-ok);
+    background: var(--color-ok);
+    color: var(--color-on-primary);
+}
+
+.done .stepState {
+    color: var(--color-ok);
+}
+
+.active {
+    background: var(--color-blue-soft);
+}
+
+.active .mark {
+    border-color: var(--color-line);
+    border-top-color: var(--color-blue);
+    animation: spin calc(var(--motion-slow) * 4) linear infinite;
+}
+
+.active .stepState {
+    color: var(--color-blue);
+}
+
+.wait {
+    color: var(--color-muted);
+}
+
+.wait .stepState {
+    color: var(--color-muted);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.note {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-10) var(--space-12);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    color: var(--color-ink-2);
+}
+
+/* 회색 뼈대 */
+.skel {
+    display: block;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(90deg, var(--color-surface-2), var(--color-bg), var(--color-surface-2));
+    background-size: 200% 100%;
+    animation: shimmer calc(var(--motion-slow) * 6) linear infinite;
+}
+
+@keyframes shimmer {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: -100% 0;
+    }
+}
+
+.skelGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-16);
+}
+
+.skelGrid .skel {
+    height: 72px;
+}
+
+.skelGrid .skel:nth-child(2) {
+    height: 96px;
+}
+
+.skelList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+.skelHyp {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+    padding: var(--space-14) var(--space-16);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+}
+
+.line,
+.lineMid,
+.lineShort {
+    height: 10px;
+}
+
+.line {
+    width: 85%;
+}
+
+.lineMid {
+    width: 65%;
+}
+
+.lineShort {
+    width: 40%;
+}
+
+.chip {
+    width: 34%;
+    height: 26px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bar span,
+    .active .mark,
+    .skel {
+        animation: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .head {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .time {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        gap: var(--space-8);
+        align-items: baseline;
+    }
+
+    .skelGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
