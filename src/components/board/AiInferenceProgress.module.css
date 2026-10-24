@@ -69,6 +69,13 @@
     }
 }
 
+.slow {
+    padding: var(--space-10) var(--space-12);
+    border-radius: var(--radius-lg);
+    background: var(--color-warn-soft);
+    color: var(--color-warn);
+}
+
 .steps {
     display: flex;
     flex-direction: column;

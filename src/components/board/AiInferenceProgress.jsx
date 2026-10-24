@@ -5,6 +5,7 @@ import styles from './AiInferenceProgress.module.css';
 // 추론 진행 단계. 실제 진행률을 알 수 없으므로 퍼센트 대신 단계와 경과 시간만 보여 준다.
 // 자료는 화면이 이미 불러왔으므로 완료, 서버 응답을 기다리는 동안은 AI 추론, 응답을 받으면 결과 화면으로 바뀐다.
 const STEP_STATE_LABEL = { done: '완료', active: '진행 중', wait: '대기' };
+const SLOW_NOTICE_SECONDS = 60;
 
 export function AiInferenceProgress({ startedAt, evidenceCount, statementCount }) {
     const elapsed = useElapsed(startedAt, null);
@@ -34,6 +35,12 @@ export function AiInferenceProgress({ startedAt, evidenceCount, statementCount }
             <div className={styles.bar} aria-hidden="true">
                 <span />
             </div>
+            {/* 1분이 지나면 멈춘 것으로 오해하지 않도록 한 번 더 안내한다. 화면은 최대 2분까지 응답을 기다린다. */}
+            {elapsed >= SLOW_NOTICE_SECONDS && (
+                <p className={`${styles.slow} body2`} role="status">
+                    1분이 지났습니다. 자료가 많으면 2분 가까이 걸릴 수 있으니 조금만 더 기다려 주세요.
+                </p>
+            )}
             <ol className={styles.steps}>
                 {steps.map((step) => (
                     <li key={step.label} className={`${styles.step} ${styles[step.state]}`}>

@@ -209,6 +209,21 @@ function RelationDiagram({ nodes: rawNodes, candidate, index }) {
     );
 }
 
+// 서버는 추론 후보를 15분만 보관한다. 새로고침으로 결과를 다시 보여 줘도 그 뒤에는 채택 요청이 실패하므로 미리 막고 안내한다.
+const CANDIDATE_TTL_MS = 15 * 60 * 1000;
+
+function useCandidatesExpired(createdMs) {
+    const [expiredFor, setExpiredFor] = useState(null);
+    useEffect(() => {
+        if (!createdMs) {
+            return undefined;
+        }
+        const timer = setTimeout(() => setExpiredFor(createdMs), Math.max(0, createdMs + CANDIDATE_TTL_MS - Date.now()));
+        return () => clearTimeout(timer);
+    }, [createdMs]);
+    return Boolean(createdMs) && expiredFor === createdMs;
+}
+
 export default function AiInferencePage() {
     const { caseId, board, logs, locked, officerName, reloadBoard } = useOutletContext();
     const loader = useCallback(() => loadMaterials(caseId), [caseId]);
@@ -221,6 +236,7 @@ export default function AiInferencePage() {
     const { run: aiRun, running, setAnalysis, setChecked, markSeen } = ai;
     const { analysis, checked } = aiRun;
     const runError = aiRun.status === 'error' ? aiRun.error : null;
+    const expired = useCandidatesExpired(analysis?.createdMs);
 
     const run = () => {
         setNotice('');
@@ -244,6 +260,9 @@ export default function AiInferencePage() {
         if (decision === '기각') {
             // 기각은 저장하지 않는다(POL-010 ④).
             setAnalysis((prev) => ({ ...prev, decisions: { ...prev.decisions, [index]: '기각' } }));
+            return;
+        }
+        if (expired) {
             return;
         }
         const result = await adopt.submit(() => adoptHypothesis(caseId, candidate.candidateId));
@@ -528,6 +547,9 @@ export default function AiInferencePage() {
                             <div className={`${styles.ncBody} ${styles.hcards}`}>
                                 <ErrorState error={adopt.error} />
                                 {running && <SkeletonHypotheses />}
+                                {!running && analysis && expired && !analysis.adoptedId && (
+                                    <Alert tone="warn">추론 후 15분이 지나 이 결과의 가설은 채택할 수 없습니다. 다시 분석해 주세요.</Alert>
+                                )}
                                 {!running && analysis?.candidates.length === 1 && (
                                     <Alert tone="info">자료가 부족해 가설 1개만 도출되었습니다. 증거물·진술을 보강한 뒤 다시 추론해 보세요.</Alert>
                                 )}
@@ -575,7 +597,7 @@ export default function AiInferencePage() {
                                                 <Button
                                                     size="sm"
                                                     variant={decision === '채택' ? 'primary' : 'secondary'}
-                                                    disabled={locked || Boolean(decision) || previously || Boolean(otherAdopted) || adopt.submitting}
+                                                    disabled={locked || expired || Boolean(decision) || previously || Boolean(otherAdopted) || adopt.submitting}
                                                     onClick={() => decide(candidate, index, '채택')}
                                                 >
                                                     가설 채택
