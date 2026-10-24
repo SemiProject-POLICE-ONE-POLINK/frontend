@@ -58,9 +58,24 @@ function ListCard({ icon, title, count, actions, children }) {
     );
 }
 
+// AI 추론 카드 아래 상태 문구. 이번 보드에서 추론을 마쳤으면 최근 분석 시각과 결과 위치를 알려 준다.
+function AiRunStatus({ locked, analysis }) {
+    if (locked) {
+        return '수사 종결된 사건은 AI 추론을 실행할 수 없습니다';
+    }
+    if (analysis) {
+        return (
+            <>
+                최근 분석 <span className="num">{formatDateTime(analysis.at)}</span> · 결과 보기는 AI 사건 추론 탭
+            </>
+        );
+    }
+    return 'AI 결과는 참고용이며 채택은 담당 경찰이 결정합니다';
+}
+
 export default function BoardMainPage() {
     const navigate = useNavigate();
-    const { caseId, board, logs, locked, officerName, reloadBoard } = useOutletContext();
+    const { caseId, board, logs, locked, officerName, reloadBoard, aiAnalysis } = useOutletContext();
     const [modal, setModal] = useState(null);
     const { caseInfo, latestHypothesis: hypothesis } = board;
     const statementCount = board.witnesses.reduce((sum, witness) => sum + witness.statementCount, 0);
@@ -145,7 +160,7 @@ export default function BoardMainPage() {
                         <Icon name="ai" size={17} /> AI 추론 실행
                     </button>
                     <p className={`${styles.aiLast} caption1`}>
-                        {locked ? '수사 종결된 사건은 AI 추론을 실행할 수 없습니다' : 'AI 결과는 참고용이며 채택은 담당 경찰이 결정합니다'}
+                        <AiRunStatus locked={locked} analysis={aiAnalysis} />
                     </p>
                 </section>
 

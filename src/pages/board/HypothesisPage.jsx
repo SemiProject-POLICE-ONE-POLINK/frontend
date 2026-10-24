@@ -3,13 +3,15 @@ import { useOutletContext } from 'react-router';
 import { getAdoptedHypotheses, getEvidences, getWitnesses } from '../../api/investigations';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime } from '../../utils/format';
-import { buildBasisLookup, toCheckItems } from '../../utils/hypothesis';
+import { buildBasisLookup } from '../../utils/hypothesis';
+import { useAuthStore } from '../../store/authStore';
 import Icon from '../../components/common/Icon';
 import Tag from '../../components/common/Tag';
 import StatusBadge from '../../components/common/StatusBadge';
 import { ButtonLink } from '../../components/common/Button';
 import { ErrorState, LoadingState } from '../../components/common/Feedback';
 import { BasisChips, Confidence, SourceTag } from '../../components/board/HypothesisParts';
+import HypothesisChecklist from '../../components/board/HypothesisChecklist';
 import styles from './Board.module.css';
 
 const loadHypotheses = (caseId) =>
@@ -20,7 +22,10 @@ const loadHypotheses = (caseId) =>
 
 // 수사 가설(POL-014): 채택한 가설만 최근 채택 순으로 누적해 보여 준다. 채택한 가설은 수정·삭제하지 않는다.
 export default function HypothesisPage() {
-    const { caseId, locked } = useOutletContext();
+    const { caseId, board, locked } = useOutletContext();
+    const userId = useAuthStore((state) => state.user?.userId);
+    // 체크 변경은 수사 중인 사건의 담당 경찰만 가능하다. 서버도 같은 조건을 403·409로 검사한다.
+    const editable = !locked && board.caseInfo?.assignedOfficerId === userId;
     const loader = useCallback(() => loadHypotheses(caseId), [caseId]);
     const { data, error, loading, reload } = useAsync(loader);
 
@@ -51,7 +56,6 @@ export default function HypothesisPage() {
         <>
             <ErrorState error={error} onRetry={reload} />
             {data.adopted.map((item, index) => {
-                const checks = toCheckItems(item.additionalRecommendation);
                 return (
                     <div key={item.hypothesisId} className={styles.hfull}>
                         <section className={styles.nc}>
@@ -89,27 +93,12 @@ export default function HypothesisPage() {
                                 )}
                             </div>
                         </section>
-                        <section className={styles.nc}>
-                            <header className={styles.ncHead}>
-                                <h2 className="title3">
-                                    추가로 확인할 것 <span className={`${styles.count} num`}>({checks.length})</span>
-                                </h2>
-                            </header>
-                            <div className={styles.ncBody}>
-                                {checks.length === 0 ? (
-                                    <p className={`${styles.muted} body2`}>채택할 때 AI가 제안한 확인 항목이 없습니다.</p>
-                                ) : (
-                                    <ul className={styles.checkList}>
-                                        {checks.map((text) => (
-                                            <li key={text} className="body2">
-                                                {text}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                                <p className={`${styles.muted} caption1`}>완료 체크 저장 API가 준비되면 항목별 완료 표시를 연동합니다.</p>
-                            </div>
-                        </section>
+                        <HypothesisChecklist
+                            caseId={caseId}
+                            hypothesisId={item.hypothesisId}
+                            fallbackText={item.additionalRecommendation}
+                            editable={editable}
+                        />
                     </div>
                 );
             })}
