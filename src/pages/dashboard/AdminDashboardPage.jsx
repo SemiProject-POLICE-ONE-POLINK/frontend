@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
 
     return (
         <>
-            <PageHeader eyebrow="관리자 콘솔" title="관할 사건 현황" description="미배정 사건에 담당 경찰을 지정하고, 사건 상태와 종결을 관리합니다." />
+            <PageHeader title="관할 사건 현황" description="미배정 사건에 담당 경찰을 지정하고, 사건 상태와 종결을 관리합니다." />
             {notice && <Alert tone="success">{notice}</Alert>}
             <ErrorState error={error} onRetry={reload} />
             {loading && !data && <LoadingState />}
@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
                             <KpiCard label="종결 대기" value={data.investigationDoneCaseCount} unit="건" hint="관리자 종결 필요" />
                         )}
                         <KpiCard label="종결" value={data.closedCaseCount} unit="건" />
-                        <KpiCard label="취소" value={data.canceledCaseCount} unit="건" hint="비활성 보관" />
+                        <KpiCard label="취소" value={data.canceledCaseCount} unit="건" />
                     </KpiGrid>
                     <Columns layout="main-side">
                         <Card title="담당 경찰 미배정 사건" subtitle={`${data.unassignedCaseCount}건`} padded={false}>
