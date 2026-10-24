@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { getPoliceDashboard } from '../../api/users';
 import { useAsync } from '../../hooks/useAsync';
-import { CASE_STATUS_LABEL, CASE_TYPE_LABEL } from '../../constants/codes';
+import { CASE_STATUS, CASE_STATUS_LABEL, CASE_TYPE_LABEL } from '../../constants/codes';
 import { labelOf } from '../../utils/format';
 import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
@@ -19,7 +19,31 @@ const COLUMNS = [
     { key: 'title', header: '사건명', render: (row) => <b>{row.title}</b> },
     { key: 'caseType', header: '유형', render: (row) => <Tag>{labelOf(CASE_TYPE_LABEL, row.caseType)}</Tag> },
     { key: 'status', header: '상태', render: (row) => <StatusBadge code={row.status} labels={CASE_STATUS_LABEL} /> },
+    {
+        key: 'board',
+        header: '수사 보드',
+        width: '160px',
+        render: (row) => <BoardLink row={row} />,
+    },
 ];
+
+// 수사 중인 사건만 수사를 이어 가고, 종결 대기·종결 사건은 수사 보드에서 기록을 조회만 한다(POL-002).
+// 행 클릭은 사건 상세로 가므로, 버튼 클릭이 행까지 올라가 상세로 다시 이동하지 않게 막는다.
+function BoardLink({ row }) {
+    const investigating = row.status === CASE_STATUS.INVESTIGATING;
+    const label = investigating ? '수사 보드 열기' : '기록 보기';
+    return (
+        <ButtonLink
+            size="sm"
+            variant={investigating ? 'primary' : 'secondary'}
+            to={`/board/${row.caseId}`}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`${row.caseId} ${label}`}
+        >
+            <Icon name="board" size={14} /> {label}
+        </ButtonLink>
+    );
+}
 
 export default function PoliceDashboardPage() {
     const navigate = useNavigate();
@@ -28,14 +52,8 @@ export default function PoliceDashboardPage() {
     return (
         <>
             <PageHeader
-                eyebrow="경찰 콘솔"
-                title={data ? `${data.officerName}의 근무 현황` : '경찰 대시보드'}
+                title={data ? `${data.officerName}님의 근무 현황` : '경찰 대시보드'}
                 description="배정된 사건과 반환 신청을 확인하세요."
-                actions={
-                    <ButtonLink to="/board">
-                        <Icon name="board" size={15} /> 수사 보드 열기
-                    </ButtonLink>
-                }
             />
             <ErrorState error={error} onRetry={reload} />
             {loading && !data && <LoadingState />}
