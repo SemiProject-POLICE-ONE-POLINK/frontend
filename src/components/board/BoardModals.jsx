@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { closeInvestigation, createEvidence, createInvestigationLog, createStatement, createWitness } from '../../api/investigations';
 import { useSubmit } from '../../hooks/useSubmit';
-import { CASE_STATUS_LABEL, EVIDENCE_TYPE_LABEL, FOLLOW_UP_STATEMENT_TYPES, STATEMENT_TYPE_LABEL } from '../../constants/codes';
+import { EVIDENCE_TYPE_LABEL, FOLLOW_UP_STATEMENT_TYPES, STATEMENT_TYPE_LABEL } from '../../constants/codes';
 import { nowDateTimeInput, toLocalDateTime } from '../../utils/format';
 import Modal from '../common/Modal';
-import StatusBadge from '../common/StatusBadge';
 import { Button } from '../common/Button';
-import { Alert, ErrorState } from '../common/Feedback';
+import { ErrorState } from '../common/Feedback';
 import { Field, FormGrid, Input, Select, Textarea } from '../common/Form';
 import styles from './BoardParts.module.css';
 
@@ -316,51 +315,74 @@ export function StatementFormModal({ caseId, witness, onClose, onSaved }) {
     );
 }
 
-// 수사 종결(POL-003). 채택한 수사 가설이 없으면(미처리 업무) 종결하지 않는다.
-export function InvestigationCloseModal({ open, caseId, caseStatus, hasAdoptedHypothesis, onClose, onClosed }) {
-    const [form, setForm] = useState({ result: '', reason: '' });
+const EMPTY_CLOSE_FORM = { result: '', reason: '' };
+
+// 수사 종결(POL-003). 입력 → 확인 두 단계로 진행한다. 채택 가설이 없어도 종결할 수 있다.
+// 확인 단계에서 취소하면 입력 단계로 돌아가지 않고 팝업 전체를 닫는다.
+export function InvestigationCloseModal({ open, caseId, onClose, onClosed }) {
+    const [form, setForm] = useState(EMPTY_CLOSE_FORM);
+    const [confirming, setConfirming] = useState(false);
     const { submit, submitting, error, clearError } = useSubmit();
     const filled = form.result.trim() && form.reason.trim();
 
     const close = () => {
         clearError();
+        setForm(EMPTY_CLOSE_FORM);
+        setConfirming(false);
         onClose();
     };
 
-    const handleSubmit = async (event) => {
+    const handleSubmit = (event) => {
         event.preventDefault();
-        if (!hasAdoptedHypothesis) {
-            return;
+        if (filled) {
+            setConfirming(true);
         }
+    };
+
+    const confirmClose = async () => {
         const result = await submit(() => closeInvestigation(caseId, { result: form.result.trim(), reason: form.reason.trim() }));
         if (result) {
-            setForm({ result: '', reason: '' });
+            setForm(EMPTY_CLOSE_FORM);
+            setConfirming(false);
             onClosed(result);
         }
     };
+
+    if (confirming) {
+        return (
+            <Modal
+                open={open}
+                title="수사를 종결하시겠습니까?"
+                onClose={close}
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={close} disabled={submitting}>
+                            취소
+                        </Button>
+                        <Button onClick={confirmClose} loading={submitting} loadingText="종결 처리 중…">
+                            종결하기
+                        </Button>
+                    </>
+                }
+            >
+                <ErrorState error={error} />
+                <p className="body2">
+                    수사를 종결하면 사건 상태가 즉시 ‘종결 대기’로 변경됩니다.
+                    <br />
+                    종결된 수사는 복구할 수 없으며, 해당 사건의 수사보드는 조회만 가능합니다.
+                </p>
+            </Modal>
+        );
+    }
 
     return (
         <Modal
             open={open}
             title="수사 종결"
             onClose={close}
-            footer={
-                <ModalFooter
-                    formId="investigation-close-form"
-                    onClose={close}
-                    submitting={submitting}
-                    disabled={!filled || !hasAdoptedHypothesis}
-                    label="수사 종결"
-                    loadingText="종결 처리 중…"
-                />
-            }
+            footer={<ModalFooter formId="investigation-close-form" onClose={close} disabled={!filled} label="수사 종결" />}
         >
             <form id="investigation-close-form" className={styles.form} onSubmit={handleSubmit} noValidate>
-                <p className={`${styles.note} caption1`}>
-                    현재 수사 상태 <StatusBadge code={caseStatus} labels={CASE_STATUS_LABEL} /> · 수사 중 상태는 담당 경찰 배정 시 자동으로 바뀌며, 직접
-                    바꿀 수 있는 상태는 수사 종결뿐입니다.
-                </p>
-                <ErrorState error={error} />
                 <Field label="수사 처리 결과" required>
                     {(props) => (
                         <Input
@@ -376,13 +398,6 @@ export function InvestigationCloseModal({ open, caseId, caseStatus, hasAdoptedHy
                         <Textarea {...props} rows={4} value={form.reason} onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))} />
                     )}
                 </Field>
-                {hasAdoptedHypothesis ? (
-                    <p className={`${styles.note} caption1`}>
-                        수사를 종결하면 사건이 <b>종결 대기</b> 상태가 되고, 이후 자료 등록과 AI 추론은 할 수 없습니다. 관리자가 확인한 뒤 사건을 종결합니다.
-                    </p>
-                ) : (
-                    <Alert tone="error">미처리 업무가 있어 종결할 수 없습니다: 채택된 수사 가설이 없습니다. AI 사건 추론에서 가설을 채택하세요.</Alert>
-                )}
             </form>
         </Modal>
     );

@@ -90,6 +90,23 @@ export async function getAdoptedHypotheses(caseId) {
     return response.data;
 }
 
+// HypothesisChecklistController.getChecklist — GET /api/v1/cases/{caseId}/hypotheses/{hypothesisId}/checklist
+// 채택·저장된 가설의 hypothesisId만 사용한다. 미채택 후보의 candidateId로는 요청하지 않는다.
+export async function getHypothesisChecklist(caseId, hypothesisId) {
+    const response = await client.get(`${casePath(caseId)}/hypotheses/${encodeURIComponent(hypothesisId)}/checklist`);
+    return response.data;
+}
+
+// HypothesisChecklistController.updateCheckItem — PATCH /api/v1/cases/{caseId}/hypotheses/{hypothesisId}/checklist/{itemId}
+// 성공하면 변경된 전체 체크리스트를 돌려준다.
+export async function updateHypothesisCheckItem(caseId, hypothesisId, itemId, completed) {
+    const response = await client.patch(
+        `${casePath(caseId)}/hypotheses/${encodeURIComponent(hypothesisId)}/checklist/${encodeURIComponent(itemId)}`,
+        { completed }
+    );
+    return response.data;
+}
+
 // InvestigationCloseController.closeInvestigation — POST /api/v1/cases/{caseId}/investigation/close
 // 화면 정의서(POL-003)의 수사 처리 결과와 종결 사유를 서버의 closeReason 하나로 합쳐 보낸다.
 export async function closeInvestigation(caseId, { result, reason }) {

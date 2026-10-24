@@ -4,7 +4,7 @@ import { adoptHypothesis, generateHypotheses, getAdoptedHypotheses, getEvidences
 import { useAsync } from '../../hooks/useAsync';
 import { useSubmit } from '../../hooks/useSubmit';
 import { CASE_STATUS_LABEL, CASE_TYPE_LABEL, EVIDENCE_TYPE_LABEL, STATEMENT_TYPE_LABEL } from '../../constants/codes';
-import { formatDateTime, labelOf } from '../../utils/format';
+import { formatDateTime, labelOf, nowDateTimeInput } from '../../utils/format';
 import { buildBasisLookup, toCheckItems } from '../../utils/hypothesis';
 import Icon from '../../components/common/Icon';
 import Tag from '../../components/common/Tag';
@@ -16,7 +16,7 @@ import { EvidenceFormModal, LogFormModal, WitnessFormModal } from '../../compone
 import styles from './Board.module.css';
 
 const MAX_NODES = 6;
-const PREVIEW_COUNT = 4;
+const PREVIEW_COUNT = 2;
 
 // 목격자 요약은 최근 진술 순으로 보여 준다(POL-002 ⑦). 진술은 서버가 시간 오름차순으로 준다.
 const byLatestStatement = (witnesses) =>
@@ -30,84 +30,192 @@ const loadMaterials = (caseId) =>
         adopted,
     }));
 
-// 관계도 노드: 초점 가설의 근거 자료를 우선해 최대 6개만 표시한다(POL-010 처리 조건).
+// 관계도에서 자료와 가설의 관계. 일치는 가설을 지지하는 근거, 불일치는 AI가 가설과 어긋난다고 본 자료다.
+// 불일치 번호(opposingEvidenceIds·opposingStatementIds)는 서버 응답에 포함된 경우에만 표시한다.
+const RELATION = {
+    support: { chip: '일치 가능성 높음', line: styles.lineBasis, edgeClass: styles.relEdgeSupport, chipClass: styles.relChipSupport },
+    oppose: { chip: '확인 필요', line: styles.lineOppose, edgeClass: styles.relEdgeOppose, chipClass: styles.relChipOppose },
+    related: { chip: '관련 가능성 있음', line: styles.lineRelated, chipClass: '' },
+};
+
+// 근거 선 위의 관계 이름은 자료 성격으로 정한다. 진술은 정정·추가 진술이 있으면 '진술 정정'으로 표시한다.
+const EVIDENCE_EDGE = { VIDEO: '동선 일치', PHOTO: '흔적 일치', DOCUMENT: '처분 정황', SEIZED: '침입 흔적', ETC: '관련 정황' };
+
+const relationOf = (supported, opposed) => {
+    if (supported) {
+        return 'support';
+    }
+    return opposed ? 'oppose' : 'related';
+};
+
+const edgeLabelOf = (node) => {
+    if (node.relation === 'oppose') {
+        return '불일치';
+    }
+    return node.relation === 'support' ? node.edge : '';
+};
+
+// 관계도 노드: 등록 순서(증거물 → 목격자)를 유지하고, 6개를 넘으면 근거·불일치 자료를 남기고 관련 자료를 줄인다(POL-010 처리 조건).
 function buildNodes(materials, candidate) {
     const evidenceIds = new Set(candidate?.evidenceIds ?? []);
     const statementIds = new Set(candidate?.statementIds ?? []);
+    const opposingEvidenceIds = new Set(candidate?.opposingEvidenceIds ?? []);
+    const opposingStatementIds = new Set(candidate?.opposingStatementIds ?? []);
     const nodes = [
         ...materials.evidences.map((item) => ({
             id: item.evidenceId,
             name: item.evidenceName.replace(/\s*\(.+\)$/, ''),
-            sub: labelOf(EVIDENCE_TYPE_LABEL, item.evidenceType),
+            sub: [labelOf(EVIDENCE_TYPE_LABEL, item.evidenceType), item.description].filter(Boolean).join(' · '),
             icon: item.evidenceType,
-            basis: evidenceIds.has(item.evidenceId),
+            edge: EVIDENCE_EDGE[item.evidenceType] ?? '관련 정황',
+            relation: relationOf(evidenceIds.has(item.evidenceId), opposingEvidenceIds.has(item.evidenceId)),
         })),
         ...materials.witnesses.map((witness) => ({
             id: witness.witnessId,
             name: `${witness.name} 진술`,
             sub: witness.relationship,
             person: witness.name[0],
-            basis: witness.statements.some((statement) => statementIds.has(statement.statementId)),
+            edge: witness.statements.some((statement) => statement.statementType !== 'INITIAL') ? '진술 정정' : '목격 일치',
+            relation: relationOf(
+                witness.statements.some((statement) => statementIds.has(statement.statementId)),
+                witness.statements.some((statement) => opposingStatementIds.has(statement.statementId))
+            ),
         })),
     ];
-    const ordered = [...nodes.filter((node) => node.basis), ...nodes.filter((node) => !node.basis)].slice(0, MAX_NODES);
-    return ordered.map((node, index) => {
-        const angle = -Math.PI / 2 + (index * 2 * Math.PI) / Math.max(ordered.length, 1);
-        return { ...node, x: 50 + 37 * Math.cos(angle), y: 50 + 38 * Math.sin(angle) };
+    const isKey = (node) => node.relation !== 'related';
+    const relatedShown = nodes.filter((node) => !isKey(node)).slice(0, Math.max(0, MAX_NODES - nodes.filter(isKey).length));
+    return nodes.filter((node) => isKey(node) || relatedShown.includes(node)).slice(0, MAX_NODES);
+}
+
+// 관계도 캔버스(px). 글자 크기는 그대로 두고 카드 너비에 맞춰 좌우 간격만 좁히며,
+// MIN_CANVAS_WIDTH보다 좁을 때만 관계도 전체를 축소한다.
+const CANVAS_HEIGHT = 640;
+const MIN_CANVAS_WIDTH = 520;
+const RADIUS_Y = 240;
+const MAX_RADIUS_X = 240;
+const CENTER_RADIUS = 94;
+const NODE_HALF = { x: 70, y: 66 };
+
+// 노드 수별 배치 각도(위에서 시계 방향). 4개 이하는 상하좌우에만 둬 선과 관계 이름이 가운데 원에 가려지지 않게 한다.
+const LAYOUT_ANGLES = { 1: [-90], 2: [-90, 90], 3: [-90, 0, 180], 4: [-90, 0, 90, 180] };
+const anglesFor = (count) => LAYOUT_ANGLES[count] ?? Array.from({ length: count }, (_, index) => -90 + (360 * index) / count);
+
+// 관계 이름이 선 위에 들어가려면 원과 노드 사이에 이만큼의 빈 공간이 있어야 한다(글자 폭 + 앞뒤 여백).
+const EDGE_LABEL_SPACE = 76;
+
+// 선은 가운데에서 노드 상자 바로 앞까지 긋고, 관계 이름은 노드 쪽 선 끝 가까이에 둔다.
+// 좌우 노드처럼 원과 노드 사이가 좁으면 이름이 원이나 노드에 겹치지 않도록 노드 바로 위에 둔다.
+function placeNodes(nodes, canvasWidth) {
+    const radiusX = Math.min(canvasWidth / 2 - NODE_HALF.x - 8, MAX_RADIUS_X);
+    const angles = anglesFor(nodes.length);
+    return nodes.map((node, index) => {
+        const radian = (angles[index] * Math.PI) / 180;
+        const dx = radiusX * Math.cos(radian);
+        const dy = RADIUS_Y * Math.sin(radian);
+        const distance = Math.hypot(dx, dy);
+        const ux = dx / distance;
+        const uy = dy / distance;
+        const boxExit = Math.min(Math.abs(ux) > 1e-6 ? NODE_HALF.x / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-6 ? NODE_HALF.y / Math.abs(uy) : Infinity);
+        const lineEnd = distance - boxExit - 4;
+        const cx = canvasWidth / 2;
+        const cy = CANVAS_HEIGHT / 2;
+        const labelOnLine = lineEnd - CENTER_RADIUS >= EDGE_LABEL_SPACE;
+        const labelAt = lineEnd - 12;
+        return {
+            ...node,
+            x: cx + dx,
+            y: cy + dy,
+            lineEnd: { x: cx + ux * lineEnd, y: cy + uy * lineEnd },
+            labelPoint: labelOnLine ? { x: cx + ux * labelAt, y: cy + uy * labelAt } : { x: cx + dx, y: cy + dy - NODE_HALF.y - 12 },
+        };
     });
 }
 
-function RelationDiagram({ nodes, candidate, index }) {
+function useElementWidth(ref) {
+    const [width, setWidth] = useState(null);
+    useEffect(() => {
+        const element = ref.current;
+        if (!element) {
+            return undefined;
+        }
+        const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [ref]);
+    return width;
+}
+
+function RelationDiagram({ nodes: rawNodes, candidate, index }) {
+    const frameRef = useRef(null);
+    const frameWidth = useElementWidth(frameRef) ?? MIN_CANVAS_WIDTH;
+    const canvasWidth = Math.max(frameWidth, MIN_CANVAS_WIDTH);
+    const scale = Math.min(1, frameWidth / MIN_CANVAS_WIDTH);
+    const nodes = placeNodes(rawNodes, canvasWidth);
+    const center = { x: canvasWidth / 2, y: CANVAS_HEIGHT / 2 };
     return (
-        <div className={styles.rel}>
-            <svg className={styles.relLines} aria-hidden="true">
-                {nodes.map((node) => (
-                    <line
-                        key={node.id}
-                        x1="50%"
-                        y1="50%"
-                        x2={`${50 + (node.x - 50) * 0.66}%`}
-                        y2={`${50 + (node.y - 50) * 0.66}%`}
-                        className={node.basis ? styles.lineBasis : styles.lineRelated}
-                    />
-                ))}
-            </svg>
-            <div className={styles.relCenter}>
-                <Icon name="witness" size={26} />
-                <span className="micro">
-                    가설 {index + 1}
-                    {candidate.confidence != null && ` · ${candidate.confidence}%`}
-                </span>
-                <span className="caption2">{candidate.content}</span>
-            </div>
-            {nodes.map((node) => (
-                <div key={node.id} className={styles.relNode} style={{ left: `${node.x}%`, top: `${node.y}%` }}>
-                    {node.person ? (
-                        <span className={`${styles.relTile} ${styles.relPerson} title3`}>{node.person}</span>
-                    ) : (
-                        <span className={styles.relTile}>
-                            <Icon name={node.icon} size={24} />
+        <div ref={frameRef} className={styles.rel} style={{ height: `${CANVAS_HEIGHT * scale}px` }}>
+            <div
+                className={styles.relCanvas}
+                style={{ width: `${canvasWidth}px`, height: `${CANVAS_HEIGHT}px`, transform: `translateX(-50%) scale(${scale})` }}
+            >
+                <svg className={styles.relLines} aria-hidden="true">
+                    {nodes.map((node) => (
+                        <line key={node.id} x1={center.x} y1={center.y} x2={node.lineEnd.x} y2={node.lineEnd.y} className={RELATION[node.relation].line} />
+                    ))}
+                </svg>
+                {nodes
+                    .filter((node) => edgeLabelOf(node))
+                    .map((node) => (
+                        <span
+                            key={`edge-${node.id}`}
+                            className={`${styles.relEdge} ${RELATION[node.relation].edgeClass} caption2`}
+                            style={{ left: `${node.labelPoint.x}px`, top: `${node.labelPoint.y}px` }}
+                        >
+                            {edgeLabelOf(node)}
                         </span>
-                    )}
-                    <span className={`${styles.relName} caption2`}>{node.name}</span>
-                    <span className={`${styles.muted} micro`}>{node.sub}</span>
-                    <span className={`${styles.relChip} ${node.basis ? styles.relChipBasis : ''} micro`}>{node.basis ? '근거 자료' : '관련 자료'}</span>
+                    ))}
+                <div className={styles.relCenter}>
+                    <Icon name="witness" size={28} />
+                    <span className={`${styles.relHead} caption2`}>
+                        가설 {index + 1}
+                        {candidate.confidence != null && ` · ${candidate.confidence}%`}
+                    </span>
+                    <span className={`${styles.relText} label`}>{candidate.content}</span>
                 </div>
-            ))}
+                {nodes.map((node) => (
+                    <div key={node.id} className={styles.relNode} style={{ left: `${node.x}px`, top: `${node.y}px` }}>
+                        {node.person ? (
+                            <span className={`${styles.relTile} ${styles.relPerson} title3`}>{node.person}</span>
+                        ) : (
+                            <span className={styles.relTile}>
+                                <Icon name={node.icon} size={24} />
+                            </span>
+                        )}
+                        <span className={`${styles.relName} body1`} title={node.name}>
+                            {node.name}
+                        </span>
+                        {node.sub && (
+                            <span className={`${styles.relSub} caption1`} title={node.sub}>
+                                {node.sub}
+                            </span>
+                        )}
+                        <span className={`${styles.relChip} ${RELATION[node.relation].chipClass} caption2`}>{RELATION[node.relation].chip}</span>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
 
 export default function AiInferencePage() {
-    const { caseId, board, logs, locked, officerName, reloadBoard } = useOutletContext();
+    const { caseId, board, logs, locked, officerName, reloadBoard, aiAnalysis: analysis, setAiAnalysis: setAnalysis, aiChecked: checked, setAiChecked: setChecked } =
+        useOutletContext();
     const location = useLocation();
     const navigate = useNavigate();
     const loader = useCallback(() => loadMaterials(caseId), [caseId]);
     const materials = useAsync(loader);
     const generate = useSubmit();
     const adopt = useSubmit();
-    const [analysis, setAnalysis] = useState(null);
-    const [checked, setChecked] = useState({});
     const [modal, setModal] = useState(null);
     const [notice, setNotice] = useState('');
     const autorunDone = useRef(false);
@@ -118,10 +226,10 @@ export default function AiInferencePage() {
         const response = await submitGenerate(() => generateHypotheses(caseId));
         if (response) {
             const candidates = [...(response.hypotheses ?? [])].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
-            setAnalysis((prev) => ({ round: (prev?.round ?? 0) + 1, candidates, focus: 0, decisions: {}, adoptedId: null }));
+            setAnalysis((prev) => ({ round: (prev?.round ?? 0) + 1, at: nowDateTimeInput(), candidates, focus: 0, decisions: {}, adoptedId: null }));
             setChecked({});
         }
-    }, [caseId, submitGenerate]);
+    }, [caseId, submitGenerate, setAnalysis, setChecked]);
 
     // 수사 보드 메인의 "AI 추론 실행"으로 들어오면 한 번 바로 분석한다.
     useEffect(() => {
@@ -159,19 +267,12 @@ export default function AiInferencePage() {
         reloadBoard();
     };
 
-    // 왼쪽 자료 카드는 수사 보드 메인과 같은 요약만 보여 주고, 전체 목록은 각 탭에서 본다(POL-002).
+    // 왼쪽 자료 카드는 분석 화면을 가리지 않도록 2건만 보여 주고, 전체 목록은 카드 오른쪽 위 링크로 각 탭에서 본다.
     const allLink = (tab) => (
         <Link className={`${styles.more} caption1`} to={`/board/${caseId}/${tab}`}>
             전체보기 ›
         </Link>
     );
-    const moreLink = (total, tab, unit) =>
-        total > PREVIEW_COUNT && (
-            <Link className={`${styles.moreBar} label`} to={`/board/${caseId}/${tab}`}>
-                외 {total - PREVIEW_COUNT}
-                {unit} 더 보기 ›
-            </Link>
-        );
 
     if (materials.loading && !data) {
         return <LoadingState />;
@@ -249,7 +350,6 @@ export default function AiInferencePage() {
                                         </div>
                                     </div>
                                 ))}
-                                {moreLink(data.evidences.length, 'evidences', '건')}
                             </div>
                         </section>
                         <section className={styles.nc}>
@@ -293,7 +393,6 @@ export default function AiInferencePage() {
                                             </div>
                                         );
                                     })}
-                                {moreLink(data.witnesses.length, 'witnesses', '명')}
                             </div>
                         </section>
                         <section className={styles.nc}>
@@ -322,7 +421,6 @@ export default function AiInferencePage() {
                                         ))}
                                     </ul>
                                 )}
-                                {moreLink(logs.length, 'logs', '건')}
                             </div>
                         </section>
                     </div>
@@ -334,7 +432,7 @@ export default function AiInferencePage() {
                                     <span className={styles.aiEmptyIcon}>
                                         <Icon name="brain" size={28} />
                                     </span>
-                                    <h3 className="title2">{locked ? 'AI 추론을 실행할 수 없습니다' : 'AI 분석을 실행하세요'}</h3>
+                                    <h3 className="title2">{locked ? 'AI 추론을 실행할 수 없습니다' : 'AI 추론을 실행하세요'}</h3>
                                     <p className="body2">
                                         {locked
                                             ? '수사 종결된 사건은 새 분석을 실행할 수 없습니다. 채택한 가설은 수사 가설 탭에서 조회할 수 있습니다.'
@@ -356,8 +454,10 @@ export default function AiInferencePage() {
                                     <div className={styles.ncBody}>
                                         <RelationDiagram nodes={buildNodes(data, focused)} candidate={focused} index={analysis.focus} />
                                         <p className={`${styles.legend} caption1`}>
-                                            <span className={styles.legendBasis}>━</span> 가설 {analysis.focus + 1}의 근거 · <span className={styles.legendRel}>┅</span> 관련
-                                            자료 · 가설 카드를 누르면 관계도가 바뀝니다
+                                            <span><span className={styles.legendBasis}>━</span> 가설 {analysis.focus + 1}의 근거</span>
+                                            <span><span className={styles.legendOppose}>┅</span> AI가 찾은 불일치</span>
+                                            <span><span className={styles.legendRel}>┅</span> 관련 자료</span>
+                                            <span>가설 카드를 누르면 관계도가 바뀝니다</span>
                                         </p>
                                     </div>
                                 </section>
@@ -412,7 +512,6 @@ export default function AiInferencePage() {
                             <div className={`${styles.ncBody} ${styles.hcards}`}>
                                 <ErrorState error={adopt.error} />
                                 {analysis && generate.error && <ErrorState error={generate.error} />}
-                                {!analysis && <p className={`${styles.muted} body2`}>분석을 실행하면 가설 3개가 신뢰도 순으로 표시됩니다.</p>}
                                 {analysis?.candidates.map((candidate, index) => {
                                     const decision = analysis.decisions[index];
                                     const previously = adoptedContents.has(candidate.content) && decision !== '채택';
@@ -479,8 +578,11 @@ export default function AiInferencePage() {
                                     );
                                 })}
                                 <p className={`${styles.muted} caption1`}>
-                                    신뢰도는 근거 자료와의 부합 정도이며 확정된 사실이 아닙니다. 한 번 분석할 때마다 가설 하나를 채택할 수 있고, 채택한 가설은 수사 가설에
-                                    누적 저장됩니다. 기각하거나 결정하지 않은 가설은 저장되지 않으며 결정은 취소할 수 없습니다.
+                                    최대 3개의 주요 가설이 신뢰도가 높은 순으로 표시됩니다.
+                                    <br />
+                                    본 가설은 등록된 수사 자료를 바탕으로 생성한 참고 정보입니다.
+                                    <br />
+                                    사실관계와 근거의 타당성을 검토한 후 채택 여부를 판단해 주시기 바랍니다.
                                 </p>
                             </div>
                         </section>

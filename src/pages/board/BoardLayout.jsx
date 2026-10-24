@@ -38,6 +38,20 @@ export default function BoardLayout() {
     const { data, error, loading, reload } = useAsync(loader);
     const [closeOpen, setCloseOpen] = useState(false);
     const [notice, setNotice] = useState('');
+    // AI 추론 후보는 서버에 저장되지 않는다. 탭을 옮겨도 이번 분석 결과와 완료 상태를 이어 보이도록 보드가 사건별로 들고 있는다.
+    const [aiRun, setAiRun] = useState({ caseId: null, analysis: null, checked: {} });
+    const aiAnalysis = aiRun.caseId === caseId ? aiRun.analysis : null;
+    const aiChecked = aiRun.caseId === caseId ? aiRun.checked : {};
+    const updateAiRun = useCallback(
+        (key, update) =>
+            setAiRun((prev) => {
+                const current = prev.caseId === caseId ? prev : { caseId, analysis: null, checked: {} };
+                return { ...current, [key]: typeof update === 'function' ? update(current[key]) : update };
+            }),
+        [caseId]
+    );
+    const setAiAnalysis = useCallback((update) => updateAiRun('analysis', update), [updateAiRun]);
+    const setAiChecked = useCallback((update) => updateAiRun('checked', update), [updateAiRun]);
 
     const board = data?.board;
     const caseInfo = board?.caseInfo;
@@ -46,9 +60,14 @@ export default function BoardLayout() {
     const locked = !caseInfo || caseInfo.status !== CASE_STATUS.INVESTIGATING;
     const officerName = caseInfo?.assignedOfficerId === user?.userId ? user.name : `회원 번호 ${caseInfo?.assignedOfficerId ?? '-'}`;
 
-    const handleClosed = () => {
+    // 잠금은 다시 조회한 사건 상태로만 판단한다. 서버가 종결 대기로 바꾸지 않았으면 그 사실을 그대로 알린다.
+    const handleClosed = (result) => {
         setCloseOpen(false);
-        setNotice('수사를 종결했습니다. 사건이 종결 대기 상태가 되었고, 관리자가 사건을 종결합니다.');
+        setNotice(
+            result.status === CASE_STATUS.INVESTIGATION_DONE
+                ? { tone: 'success', text: '수사를 종결했습니다. 사건이 종결 대기 상태가 되어 수사 보드는 조회만 가능합니다.' }
+                : { tone: 'warn', text: '수사 종결 기록은 저장했지만 서버가 사건 상태를 종결 대기로 바꾸지 않았습니다. 백엔드 반영이 필요합니다.' }
+        );
         reload();
     };
 
@@ -144,7 +163,7 @@ export default function BoardLayout() {
                     </nav>
                 </section>
             )}
-            {notice && <Alert tone="success">{notice}</Alert>}
+            {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
             {caseInfo && locked && (
                 <Alert tone="info">
                     {caseInfo.status === CASE_STATUS.INVESTIGATION_DONE
@@ -152,13 +171,11 @@ export default function BoardLayout() {
                         : '종결되었거나 수사 중이 아닌 사건입니다. 기록은 조회만 가능합니다.'}
                 </Alert>
             )}
-            {board && <Outlet context={{ caseId, board, logs: data.logs, locked, officerName, reloadBoard: reload }} />}
+            {board && <Outlet context={{ caseId, board, logs: data.logs, locked, officerName, reloadBoard: reload, aiAnalysis, setAiAnalysis, aiChecked, setAiChecked }} />}
             {caseInfo && (
                 <InvestigationCloseModal
                     open={closeOpen}
                     caseId={caseId}
-                    caseStatus={caseInfo.status}
-                    hasAdoptedHypothesis={Boolean(board.latestHypothesis)}
                     onClose={() => setCloseOpen(false)}
                     onClosed={handleClosed}
                 />
