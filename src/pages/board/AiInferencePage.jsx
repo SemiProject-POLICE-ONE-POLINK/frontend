@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useOutletContext } from 'react-router';
-import { adoptHypothesis, generateHypotheses, getAdoptedHypotheses, getEvidences, getWitnesses } from '../../api/investigations';
+import { Link, useOutletContext } from 'react-router';
+import { adoptHypothesis, getAdoptedHypotheses, getEvidences, getWitnesses } from '../../api/investigations';
 import { useAsync } from '../../hooks/useAsync';
 import { useSubmit } from '../../hooks/useSubmit';
 import { CASE_STATUS_LABEL, CASE_TYPE_LABEL, EVIDENCE_TYPE_LABEL, STATEMENT_TYPE_LABEL } from '../../constants/codes';
-import { formatDateTime, labelOf, nowDateTimeInput } from '../../utils/format';
+import { formatDateTime, labelOf } from '../../utils/format';
+import { useAiRun } from '../../store/aiInferenceStore';
 import { buildBasisLookup, toCheckItems } from '../../utils/hypothesis';
 import Icon from '../../components/common/Icon';
 import Tag from '../../components/common/Tag';
@@ -13,6 +14,7 @@ import { Button } from '../../components/common/Button';
 import { Alert, ErrorState, LoadingState } from '../../components/common/Feedback';
 import { BasisChips, Confidence } from '../../components/board/HypothesisParts';
 import { EvidenceFormModal, LogFormModal, WitnessFormModal } from '../../components/board/BoardModals';
+import { AiInferenceProgress, SkeletonDiagram, SkeletonHypotheses } from '../../components/board/AiInferenceProgress';
 import styles from './Board.module.css';
 
 const MAX_NODES = 6;
@@ -207,38 +209,46 @@ function RelationDiagram({ nodes: rawNodes, candidate, index }) {
     );
 }
 
+// 서버는 추론 후보를 15분만 보관한다. 새로고침으로 결과를 다시 보여 줘도 그 뒤에는 채택 요청이 실패하므로 미리 막고 안내한다.
+const CANDIDATE_TTL_MS = 15 * 60 * 1000;
+
+function useCandidatesExpired(createdMs) {
+    const [expiredFor, setExpiredFor] = useState(null);
+    useEffect(() => {
+        if (!createdMs) {
+            return undefined;
+        }
+        const timer = setTimeout(() => setExpiredFor(createdMs), Math.max(0, createdMs + CANDIDATE_TTL_MS - Date.now()));
+        return () => clearTimeout(timer);
+    }, [createdMs]);
+    return Boolean(createdMs) && expiredFor === createdMs;
+}
+
 export default function AiInferencePage() {
-    const { caseId, board, logs, locked, officerName, reloadBoard, aiAnalysis: analysis, setAiAnalysis: setAnalysis, aiChecked: checked, setAiChecked: setChecked } =
-        useOutletContext();
-    const location = useLocation();
-    const navigate = useNavigate();
+    const { caseId, board, logs, locked, officerName, reloadBoard } = useOutletContext();
     const loader = useCallback(() => loadMaterials(caseId), [caseId]);
     const materials = useAsync(loader);
-    const generate = useSubmit();
     const adopt = useSubmit();
     const [modal, setModal] = useState(null);
     const [notice, setNotice] = useState('');
-    const autorunDone = useRef(false);
+    // 추론 요청·결과는 화면을 떠나도 이어지도록 스토어가 들고 있다.
+    const ai = useAiRun(caseId);
+    const { run: aiRun, running, setAnalysis, setChecked, markSeen } = ai;
+    const { analysis, checked } = aiRun;
+    const runError = aiRun.status === 'error' ? aiRun.error : null;
+    const expired = useCandidatesExpired(analysis?.createdMs);
 
-    const submitGenerate = generate.submit;
-    const run = useCallback(async () => {
+    const run = () => {
         setNotice('');
-        const response = await submitGenerate(() => generateHypotheses(caseId));
-        if (response) {
-            const candidates = [...(response.hypotheses ?? [])].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
-            setAnalysis((prev) => ({ round: (prev?.round ?? 0) + 1, at: nowDateTimeInput(), candidates, focus: 0, decisions: {}, adoptedId: null }));
-            setChecked({});
-        }
-    }, [caseId, submitGenerate, setAnalysis, setChecked]);
+        ai.start();
+    };
 
-    // 수사 보드 메인의 "AI 추론 실행"으로 들어오면 한 번 바로 분석한다.
+    // 이 탭에서 결과를 봤으면 탭의 "새 결과" 표시를 지운다.
     useEffect(() => {
-        if (location.state?.autorun && !autorunDone.current && !locked) {
-            autorunDone.current = true;
-            navigate(location.pathname, { replace: true, state: null });
-            run();
+        if (aiRun.unseen) {
+            markSeen();
         }
-    }, [location.state, location.pathname, locked, navigate, run]);
+    }, [aiRun.unseen, markSeen]);
 
     const data = materials.data;
     const lookup = data ? buildBasisLookup(data.evidences, data.witnesses) : null;
@@ -250,6 +260,9 @@ export default function AiInferencePage() {
         if (decision === '기각') {
             // 기각은 저장하지 않는다(POL-010 ④).
             setAnalysis((prev) => ({ ...prev, decisions: { ...prev.decisions, [index]: '기각' } }));
+            return;
+        }
+        if (expired) {
             return;
         }
         const result = await adopt.submit(() => adoptHypothesis(caseId, candidate.candidateId));
@@ -426,7 +439,26 @@ export default function AiInferencePage() {
                     </div>
 
                     <div className={styles.col}>
-                        {!analysis ? (
+                        {running && (
+                            <>
+                                <AiInferenceProgress
+                                    startedAt={aiRun.startedAt}
+                                    evidenceCount={data.evidences.length}
+                                    statementCount={statementTotal}
+                                />
+                                <section className={styles.nc}>
+                                    <header className={styles.ncHead}>
+                                        <span className={`${styles.sn} ${styles.sn5} caption2`}>5</span>
+                                        <h3 className="title3">AI 분석 결과 (사건 관계도)</h3>
+                                        <span className={`${styles.ncActions} ${styles.muted} caption1`}>추론 후 표시</span>
+                                    </header>
+                                    <div className={styles.ncBody}>
+                                        <SkeletonDiagram />
+                                    </div>
+                                </section>
+                            </>
+                        )}
+                        {!running && !analysis && (
                             <section className={styles.nc}>
                                 <div className={styles.aiEmpty}>
                                     <span className={styles.aiEmptyIcon}>
@@ -438,14 +470,16 @@ export default function AiInferencePage() {
                                             ? '수사 종결된 사건은 새 분석을 실행할 수 없습니다. 채택한 가설은 수사 가설 탭에서 조회할 수 있습니다.'
                                             : `증거물 ${data.evidences.length}건과 진술 ${statementTotal}건으로 사건 관계도와 주요 가설을 분석합니다.`}
                                     </p>
-                                    <Button onClick={run} disabled={locked} loading={generate.submitting} loadingText="AI 분석 중…">
+                                    <Button onClick={run} disabled={locked}>
                                         <Icon name="ai" size={15} /> AI 추론 실행
                                     </Button>
-                                    <ErrorState error={generate.error} />
+                                    <ErrorState error={runError} />
                                 </div>
                             </section>
-                        ) : (
+                        )}
+                        {!running && analysis && (
                             <>
+                                <ErrorState error={runError} />
                                 <section className={styles.nc}>
                                     <header className={styles.ncHead}>
                                         <span className={`${styles.sn} ${styles.sn5} caption2`}>5</span>
@@ -501,18 +535,26 @@ export default function AiInferencePage() {
                             <header className={styles.ncHead}>
                                 <span className={`${styles.sn} ${styles.sn6} caption2`}>6</span>
                                 <h3 className="title3">AI가 제시한 주요 가설</h3>
-                                {analysis && (
+                                {analysis && !running && (
                                     <div className={styles.ncActions}>
-                                        <Button size="sm" variant="secondary" onClick={run} disabled={locked} loading={generate.submitting} loadingText="분석 중…">
+                                        <Button size="sm" variant="secondary" onClick={run} disabled={locked}>
                                             다시 분석
                                         </Button>
                                     </div>
                                 )}
+                                {running && <span className={`${styles.ncActions} ${styles.muted} caption1`}>추론 후 표시</span>}
                             </header>
                             <div className={`${styles.ncBody} ${styles.hcards}`}>
                                 <ErrorState error={adopt.error} />
-                                {analysis && generate.error && <ErrorState error={generate.error} />}
-                                {analysis?.candidates.map((candidate, index) => {
+                                {running && <SkeletonHypotheses />}
+                                {!running && analysis && expired && !analysis.adoptedId && (
+                                    <Alert tone="warn">추론 후 15분이 지나 이 결과의 가설은 채택할 수 없습니다. 다시 분석해 주세요.</Alert>
+                                )}
+                                {!running && analysis?.candidates.length === 1 && (
+                                    <Alert tone="info">자료가 부족해 가설 1개만 도출되었습니다. 증거물·진술을 보강한 뒤 다시 추론해 보세요.</Alert>
+                                )}
+                                {!running &&
+                                    analysis?.candidates.map((candidate, index) => {
                                     const decision = analysis.decisions[index];
                                     const previously = adoptedContents.has(candidate.content) && decision !== '채택';
                                     const otherAdopted = analysis.adoptedId && analysis.adoptedId !== candidate.candidateId;
@@ -555,7 +597,7 @@ export default function AiInferencePage() {
                                                 <Button
                                                     size="sm"
                                                     variant={decision === '채택' ? 'primary' : 'secondary'}
-                                                    disabled={locked || Boolean(decision) || previously || Boolean(otherAdopted) || adopt.submitting}
+                                                    disabled={locked || expired || Boolean(decision) || previously || Boolean(otherAdopted) || adopt.submitting}
                                                     onClick={() => decide(candidate, index, '채택')}
                                                 >
                                                     가설 채택

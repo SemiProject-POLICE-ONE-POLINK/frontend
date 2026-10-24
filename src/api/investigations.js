@@ -72,9 +72,11 @@ export async function createInvestigationLog(caseId, { content, investigatedAt }
 }
 
 // HypothesisController.generateHypotheses — POST /api/v1/cases/{caseId}/hypotheses/generate
-// 생성 결과는 DB에 저장되지 않는 후보다.
+// 생성 결과는 DB에 저장되지 않는 후보다. AI 응답은 1분 이상 걸릴 수 있어 이 요청만 대기 시간을 2분으로 늘린다.
+const GENERATE_TIMEOUT_MS = 120000;
+
 export async function generateHypotheses(caseId) {
-    const response = await client.post(`${casePath(caseId)}/hypotheses/generate`);
+    const response = await client.post(`${casePath(caseId)}/hypotheses/generate`, undefined, { timeout: GENERATE_TIMEOUT_MS });
     return response.data;
 }
 

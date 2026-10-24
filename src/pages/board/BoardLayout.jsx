@@ -4,6 +4,7 @@ import { getMyCases } from '../../api/cases';
 import { getInvestigationBoard, getInvestigationLogs } from '../../api/investigations';
 import { useAsync } from '../../hooks/useAsync';
 import { useAuthStore } from '../../store/authStore';
+import { useAiRun } from '../../store/aiInferenceStore';
 import { CASE_STATUS, CASE_STATUS_LABEL, CASE_TYPE_LABEL } from '../../constants/codes';
 import { formatDateTime, labelOf } from '../../utils/format';
 import Icon, { Emblem } from '../../components/common/Icon';
@@ -38,20 +39,9 @@ export default function BoardLayout() {
     const { data, error, loading, reload } = useAsync(loader);
     const [closeOpen, setCloseOpen] = useState(false);
     const [notice, setNotice] = useState('');
-    // AI 추론 후보는 서버에 저장되지 않는다. 탭을 옮겨도 이번 분석 결과와 완료 상태를 이어 보이도록 보드가 사건별로 들고 있는다.
-    const [aiRun, setAiRun] = useState({ caseId: null, analysis: null, checked: {} });
-    const aiAnalysis = aiRun.caseId === caseId ? aiRun.analysis : null;
-    const aiChecked = aiRun.caseId === caseId ? aiRun.checked : {};
-    const updateAiRun = useCallback(
-        (key, update) =>
-            setAiRun((prev) => {
-                const current = prev.caseId === caseId ? prev : { caseId, analysis: null, checked: {} };
-                return { ...current, [key]: typeof update === 'function' ? update(current[key]) : update };
-            }),
-        [caseId]
-    );
-    const setAiAnalysis = useCallback((update) => updateAiRun('analysis', update), [updateAiRun]);
-    const setAiChecked = useCallback((update) => updateAiRun('checked', update), [updateAiRun]);
+    // AI 추론 진행·새 결과 여부는 탭에 표시한다. 요청과 결과는 화면을 떠나도 이어지도록 스토어가 들고 있다.
+    const ai = useAiRun(caseId);
+    const aiUnseen = ai.run.status === 'done' && ai.run.unseen;
 
     const board = data?.board;
     const caseInfo = board?.caseInfo;
@@ -146,6 +136,8 @@ export default function BoardLayout() {
                                 >
                                     {tab.label}
                                     {tab.ai && <span className={`${styles.aiDot} micro`}>AI</span>}
+                                    {tab.ai && ai.running && <span className={styles.tabSpin} role="img" aria-label="추론 중" />}
+                                    {tab.ai && aiUnseen && <span className={`${styles.tabNew} micro`}>새 결과</span>}
                                 </NavLink>
                             );
                         })}
@@ -171,7 +163,7 @@ export default function BoardLayout() {
                         : '종결되었거나 수사 중이 아닌 사건입니다. 기록은 조회만 가능합니다.'}
                 </Alert>
             )}
-            {board && <Outlet context={{ caseId, board, logs: data.logs, locked, officerName, reloadBoard: reload, aiAnalysis, setAiAnalysis, aiChecked, setAiChecked }} />}
+            {board && <Outlet context={{ caseId, board, logs: data.logs, locked, officerName, reloadBoard: reload }} />}
             {caseInfo && (
                 <InvestigationCloseModal
                     open={closeOpen}
