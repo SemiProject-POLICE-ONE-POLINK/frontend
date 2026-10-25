@@ -11,6 +11,7 @@ import styles from './AuthPage.module.css';
 
 const MAX_LENGTH = 25;
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PHONE_RULE = /^010-\d{4}-\d{4}$/;
 
 function validate(form) {
     const errors = {};
@@ -23,8 +24,8 @@ function validate(form) {
     if (!PASSWORD_RULE.test(form.password)) {
         errors.password = '비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 모두 포함해야 합니다.';
     }
-    if (form.phone.length > MAX_LENGTH) {
-        errors.phone = '연락처는 25자 이하여야 합니다.';
+    if (!PHONE_RULE.test(form.phone.trim())) {
+        errors.phone = '연락처는 010-0000-0000 형식으로 입력해주세요.';
     }
     return errors;
 }
