@@ -1,7 +1,7 @@
 import client from './client';
 import { compactParams } from '../utils/query';
 
-// 시민 목록은 페이지 메타데이터를 주지만, 경찰 목록은 현재 items만 준다.
+// 시민 목록과 경찰 목록 모두 페이지 메타데이터를 제공한다.
 
 // ReturnRequestController.createReturnRequest — POST /api/v1/return-requests (시민 전용, 201)
 export async function createReturnRequest({ lostItemId, foundItemId, requestReason }) {

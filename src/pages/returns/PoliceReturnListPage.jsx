@@ -20,7 +20,7 @@ import styles from './Returns.module.css';
 const requestNo = (id) => `RT-${String(id).padStart(3, '0')}`;
 
 // 반환 신청 처리 목록(POL-007). 승인과 실제 인계 완료를 구분한다.
-// 경찰용 목록 API는 items만 주므로 전체 페이지 수 대신 이전·다음만 제공한다.
+// 경찰용 목록 API가 제공하는 totalPages를 사용해 페이지 번호를 표시한다.
 export default function PoliceReturnListPage() {
     const { get, update, page, setPage } = useQueryState();
     const status = RETURN_STATUS[get('status')] ? get('status') : '';
@@ -121,7 +121,7 @@ export default function PoliceReturnListPage() {
                     <DataTable caption="반환 신청 목록" columns={columns} rows={items} rowKey={(row) => row.requestId} emptyText="반환 신청이 없습니다." />
                 )}
                 <div className={styles.pager}>
-                    <Pagination page={page} hasNext={items.length === DEFAULT_PAGE_SIZE} onPageChange={setPage} />
+                    <Pagination page={page} totalPages={data?.totalPages} onPageChange={setPage} />
                 </div>
             </Card>
             {target && <CompareModal request={target} onClose={() => setTarget(null)} onProcessed={handleProcessed} />}

@@ -431,9 +431,9 @@ ADMIN
 | API 종류 | 현재 응답 특징 |
 | --- | --- |
 | 물품 목록·내 물품 | `items`, `page`, `size`, `totalElements`, `totalPages`, `first`, `last` |
-| 사건 목록·내 사건 | `items`, `totalElements`만 제공 |
+| 사건 목록·내 사건 | `items`, `page`, `size`, `totalElements`, `totalPages`, `first`, `last` |
 | 시민 내 반환 신청 | 전체 페이지 메타데이터 제공 |
-| 경찰 반환 신청 | 현재 `items`만 제공 |
+| 경찰 반환 신청 | 전체 페이지 메타데이터 제공 |
 | 증거물·목격자·수사 기록·가설 | DTO 배열을 직접 반환 |
 
 ```text

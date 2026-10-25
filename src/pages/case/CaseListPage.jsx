@@ -1,13 +1,16 @@
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { getCases } from '../../api/cases';
 import { useAsync } from '../../hooks/useAsync';
 import { useQueryState } from '../../hooks/useQueryState';
 import { useAuthStore } from '../../store/authStore';
-import { CASE_STATUS_LABEL, CASE_TYPE_LABEL, USER_ROLE } from '../../constants/codes';
+import { CASE_STATUS_LABEL, CASE_TYPE_LABEL, DEFAULT_PAGE_SIZE, USER_ROLE } from '../../constants/codes';
 import { formatDateTime, labelOf } from '../../utils/format';
+import { toServerPage } from '../../utils/query';
 import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
 import DataTable from '../../components/common/DataTable';
+import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import Tag from '../../components/common/Tag';
 import Icon from '../../components/common/Icon';
@@ -16,11 +19,7 @@ import { ErrorState, LoadingState } from '../../components/common/Feedback';
 import { Input, Select } from '../../components/common/Form';
 import styles from './CasePage.module.css';
 
-// 사건 목록 API는 Pageable만 받고 검색 조건이 없다. 검색 API가 생기기 전까지
-// 최근 접수 순으로 한 번에 받은 범위 안에서만 화면이 걸러 보여 준다.
-const FETCH_SIZE = 100;
-const loadCases = () => getCases({ page: 0, size: FETCH_SIZE, sort: 'createdAt,desc' });
-
+// 서버 검색 조건이 없어 검색어와 필터는 현재 조회한 페이지 안에서 적용한다.
 const DESCRIPTION = {
     [USER_ROLE.CITIZEN]: '내가 접수한 사건의 사건명과 처리 진행을 확인합니다.',
     [USER_ROLE.POLICE]: '관할 내 모든 사건을 조회하고 상세 정보를 확인합니다.',
@@ -31,12 +30,22 @@ export default function CaseListPage() {
     const navigate = useNavigate();
     const role = useAuthStore((state) => state.user?.role);
     const isCitizen = role === USER_ROLE.CITIZEN;
-    const { get, update } = useQueryState();
+    const { get, update, page, setPage } = useQueryState();
     const keyword = get('q');
     const type = get('type');
     const status = isCitizen ? '' : get('status');
-    
-    const { data, error, loading, reload } = useAsync(loadCases);
+
+    const loader = useCallback(
+        () =>
+            getCases({
+                page: toServerPage(page),
+                size: DEFAULT_PAGE_SIZE,
+                sort: 'createdAt,desc',
+            }),
+        [page]
+    );
+
+    const { data, error, loading, reload } = useAsync(loader);
 
     const normalized = keyword.trim().toLowerCase();
     const rows = (data?.items ?? []).filter(
@@ -121,11 +130,18 @@ export default function CaseListPage() {
                         emptyText={filtered ? '검색 결과 없음 — 다른 검색어나 조건으로 다시 찾아보세요.' : '등록된 사건이 없습니다.'}
                     />
                 )}
-                {data && data.totalElements > FETCH_SIZE && (
+                {filtered && data?.totalPages > 1 && (
                     <p className={`${styles.limit} caption1`}>
-                        전체 {data.totalElements}건 중 최근 {FETCH_SIZE}건 안에서 검색합니다. 서버 검색 API가 추가되면 전체 검색으로 바뀝니다.
+                        검색어와 필터는 현재 페이지에 표시된 사건 안에서 적용됩니다.
                     </p>
                 )}
+                <div className={styles.pager}>
+                    <Pagination
+                        page={page}
+                        totalPages={data?.totalPages}
+                        onPageChange={setPage}
+                    />
+                </div>
             </Card>
         </>
     );
