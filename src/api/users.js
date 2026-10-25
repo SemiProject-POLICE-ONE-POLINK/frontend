@@ -29,3 +29,9 @@ export async function getAssignablePolice() {
     const response = await client.get('/api/v1/users/police-officers');
     return response.data;
 }
+
+// AdminUserController.getAllUsers — GET /api/v1/users (관리자 전용)
+export async function getAllUsers() {
+    const response = await client.get('/api/v1/users');
+    return response.data;
+}
