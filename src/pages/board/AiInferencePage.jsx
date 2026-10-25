@@ -26,7 +26,7 @@ const byLatestStatement = (witnesses) =>
     [...witnesses].sort((a, b) => (b.statements.at(-1)?.createdAt ?? '').localeCompare(a.statements.at(-1)?.createdAt ?? ''));
 const TAG_TONES = ['c1', 'c2', 'c3'];
 // 한 번 분석에서 하나만 채택하므로, 채택 뒤 결정하지 않은 후보는 미채택으로 남는다. 기각·미채택은 저장하지 않는다.
-const DECISION_TEXT = { 채택: '채택됨 · 수사 가설에 저장', 기각: '기각됨 · 저장하지 않음', 미채택: '미채택 · 저장하지 않음' };
+const DECISION_TEXT = { 채택: '채택됨', 기각: '기각됨', 미채택: '미채택' };
 
 const loadMaterials = (caseId) =>
     Promise.all([getEvidences(caseId), getWitnesses(caseId), getAdoptedHypotheses(caseId)]).then(([evidences, witnesses, adopted]) => ({
@@ -464,6 +464,7 @@ export default function AiInferencePage() {
                                     startedAt={aiRun.startedAt}
                                     evidenceCount={data.evidences.length}
                                     statementCount={statementTotal}
+                                    logCount={logs.length}
                                 />
                                 <section className={styles.nc}>
                                     <header className={styles.ncHead}>
@@ -487,7 +488,7 @@ export default function AiInferencePage() {
                                     <p className="body2">
                                         {locked
                                             ? '수사 종결된 사건은 새 분석을 실행할 수 없습니다. 채택한 가설은 수사 가설 탭에서 조회할 수 있습니다.'
-                                            : `증거물 ${data.evidences.length}건과 진술 ${statementTotal}건으로 사건 관계도와 주요 가설을 분석합니다.`}
+                                            : `증거물 ${data.evidences.length}건, 진술 ${statementTotal}건, 수사 기록 ${logs.length}건으로 사건 관계도와 주요 가설을 분석합니다.`}
                                     </p>
                                     <Button onClick={run} disabled={locked}>
                                         <Icon name="ai" size={15} /> AI 추론 실행
