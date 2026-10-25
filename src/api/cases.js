@@ -15,10 +15,17 @@ export async function createCase({ title, caseType, description, occurredAt, loc
     return response.data;
 }
 
-// CaseController.getCases — GET /api/v1/cases (시민은 본인 신고, 경찰·관리자는 전체)
-export async function getCases({ page, size, sort }) {
+// CaseController.getCases — GET /api/v1/cases (로그인 사용자 전체 사건 목록·검색)
+export async function getCases({ page, size, sort, keyword, caseType, status }) {
     const response = await client.get('/api/v1/cases', {
-        params: compactParams({ page, size, sort }),
+        params: compactParams({
+            page,
+            size,
+            sort,
+            keyword,
+            caseType,
+            status,
+        }),
     });
     return response.data;
 }
@@ -51,6 +58,14 @@ export async function assignOfficer(caseId, officerId) {
 export async function closeCase(caseId, { result, reason }) {
     const response = await client.post(`/api/v1/cases/${encodeURIComponent(caseId)}/close`, {
         closeReason: `[처리 결과] ${result} / [종결 사유] ${reason}`,
+    });
+    return response.data;
+}
+
+// CaseController.cancelCase — POST /api/v1/cases/{caseId}/cancel (관리자 전용)
+export async function cancelCase(caseId, cancelReason) {
+    const response = await client.post(`/api/v1/cases/${encodeURIComponent(caseId)}/cancel`, {
+        cancelReason,
     });
     return response.data;
 }
