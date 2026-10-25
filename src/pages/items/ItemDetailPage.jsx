@@ -10,12 +10,11 @@ import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
 import StatusBadge from '../../components/common/StatusBadge';
 import Tag from '../../components/common/Tag';
-import Icon from '../../components/common/Icon';
 import { Button } from '../../components/common/Button';
 import { Alert, EmptyState, ErrorState, LoadingState } from '../../components/common/Feedback';
 import ItemFormModal from '../../components/items/ItemFormModal';
 import ReturnRequestModal from '../../components/items/ReturnRequestModal';
-import ImageAttachModal from '../../components/items/ImageAttachModal';
+import ItemImage from '../../components/items/ItemImage';
 import styles from './Items.module.css';
 
 const HISTORY_SIZE = 100;
@@ -34,7 +33,7 @@ async function loadItem(itemId, role) {
             history: (myReturns.items ?? []).filter((request) => request.lostItemId === itemId || request.foundItemId === itemId),
         };
     }
-    if (role === USER_ROLE.POLICE) {
+    if (role === USER_ROLE.POLICE || role === USER_ROLE.ADMIN) {
         const returns = await getReturnRequests({ keyword: itemId, page: 0, size: HISTORY_SIZE });
         return {
             item,
@@ -62,8 +61,7 @@ export default function ItemDetailPage() {
 
     // 화면의 버튼 노출은 서버 규칙을 반영한 보조 수단이다.
     const canEdit = item && ((lost && role === USER_ROLE.CITIZEN && mine && item.status === ITEM_STATUS.LOST) || (!lost && role === USER_ROLE.POLICE && item.status === ITEM_STATUS.STORED));
-    const canAttachImage = item && role === USER_ROLE.CITIZEN && mine && lost && item.status === ITEM_STATUS.LOST && !item.imagePath;
-    const foundRequestable = item && !lost && role === USER_ROLE.CITIZEN && !mine && item.status === ITEM_STATUS.STORED;
+    const foundRequestable = item && !lost && role === USER_ROLE.CITIZEN && item.status === ITEM_STATUS.STORED;
     const canRequest = foundRequestable && data.openLostItems.length > 0;
     const appliedLostIds = new Set(
         (data?.history ?? []).filter((request) => request.foundItemId === itemId && request.status !== RETURN_STATUS.REJECTED).map((request) => request.lostItemId)
@@ -108,24 +106,15 @@ export default function ItemDetailPage() {
                                         수정
                                     </Button>
                                 )}
-                                {canAttachImage && (
-                                    <Button variant="secondary" onClick={() => setModal('image')}>
-                                        이미지 첨부
-                                    </Button>
-                                )}
                             </>
                         }
                     />
                     <div className={styles.layout}>
                         <Card>
                             <div className={styles.detail}>
-                                {/* 이미지 공개 URL 계약이 확정되기 전에는 서버 경로를 img src로 쓰지 않는다. */}
+                                {/* 업로드 이미지가 없으면 물품 종류에 맞는 기본 이미지를 표시한다. */}
                                 <div className={`${styles.photo} caption1`}>
-                                    <span>
-                                        <Icon name={item.category} size={56} strokeWidth={1.4} />
-                                        <br />
-                                        {item.imagePath ? '첨부 이미지 있음' : '첨부 이미지 없음'}
-                                    </span>
+                                    <ItemImage itemId={item.itemId} alt={`${item.itemName} 이미지`} />
                                 </div>
                                 <dl className={`${styles.dl} body2`}>
                                     <dt>{lost ? '분실 물품' : '습득 물품'}</dt>
@@ -151,7 +140,7 @@ export default function ItemDetailPage() {
                         </Card>
                         <Card title={role === USER_ROLE.CITIZEN ? '내 반환 신청 이력' : '반환 신청 이력'}>
                             {data.history === null ? (
-                                <p className={`${styles.muted} body2`}>관리자용 반환 신청 조회 API가 아직 없습니다. 반환 신청 처리는 경찰 계정에서 확인합니다.</p>
+                                <LoadingState />
                             ) : data.history.length === 0 ? (
                                 <EmptyState title="반환 신청이 없습니다">{canRequest && '본인 분실물과 일치하면 반환을 신청하세요.'}</EmptyState>
                             ) : (
@@ -160,13 +149,16 @@ export default function ItemDetailPage() {
                                         <li key={request.requestId} className={styles.historyRow}>
                                             <span className={`${styles.code} num caption2`}>RT-{String(request.requestId).padStart(3, '0')}</span>
                                             <div>
+                                                <strong className="body2">{request.requesterName ?? `회원 ${request.requesterId}`} </strong>
                                                 <StatusBadge code={request.status} labels={RETURN_STATUS_LABEL} />
                                                 <p className={`${styles.muted} caption1`}>
-                                                    <span className="num">
-                                                        {request.lostItemId} ↔ {request.foundItemId}
-                                                    </span>{' '}
+                                                    <span className="num">{request.lostItemId}</span>{' '}
+                                                    {request.lostItemName} ↔{' '}
+                                                    <span className="num">{request.foundItemId}</span>{' '}
+                                                    {request.foundItemName}{' '}
                                                     · <span className="num">{formatDateTime(request.createdAt)}</span>
                                                 </p>
+                                                {request.rejectReason && <p className={`${styles.muted} caption1`}>반려 사유: {request.rejectReason}</p>}
                                             </div>
                                         </li>
                                     ))}
@@ -186,7 +178,6 @@ export default function ItemDetailPage() {
                     {modal === 'edit' && (
                         <ItemFormModal open itemType={item.itemType} item={item} onClose={() => setModal(null)} onSaved={() => done('수정 내용을 저장했습니다.')} />
                     )}
-                    {modal === 'image' && <ImageAttachModal open itemId={item.itemId} onClose={() => setModal(null)} onSaved={() => done('이미지를 첨부했습니다.')} />}
                     {modal === 'return' && (
                         <ReturnRequestModal
                             open

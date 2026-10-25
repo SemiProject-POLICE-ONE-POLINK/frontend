@@ -19,6 +19,7 @@ import Icon from '../../components/common/Icon';
 import { ButtonLink } from '../../components/common/Button';
 import { EmptyState, ErrorState, LoadingState } from '../../components/common/Feedback';
 import CaseProgress from '../../components/case/CaseProgress';
+import ItemImage from '../../components/items/ItemImage';
 import styles from './CitizenMyPage.module.css';
 
 const loadMyPage = () => Promise.all([getCitizenMyPage(), getMyInfo()]).then(([page, info]) => ({ page, info }));
@@ -204,7 +205,7 @@ export default function CitizenMyPage() {
                                         onClick={() => navigate(`/items/${item.itemId}`, { state: { from: 'my' } })}
                                     >
                                         <span className={styles.thumb}>
-                                            <Icon name={item.itemType === ITEM_TYPE.LOST ? 'search' : 'items'} size={22} />
+                                            <ItemImage itemId={item.itemId} alt={`${item.itemName} 이미지`} />
                                         </span>
                                         <span className={styles.itemBody}>
                                             <span className={`${styles.itemTitle} label`}>

@@ -60,6 +60,13 @@ export async function attachItemImage(itemId, image) {
     return response.data;
 }
 
+// ItemController.getItemImage — GET /api/v1/items/{itemId}/image (인증 필요)
+// img 태그에는 인증 헤더를 붙일 수 없으므로 axios로 파일을 받아 Blob URL로 표시한다.
+export async function getItemImage(itemId) {
+    const response = await client.get(`${itemPath(itemId)}/image`, { responseType: 'blob' });
+    return response.data;
+}
+
 // ItemController.getItemStatistics — GET /api/v1/items/statistics (경찰·관리자)
 export async function getItemStatistics({ startDate, endDate }) {
     const response = await client.get('/api/v1/items/statistics', {
@@ -71,5 +78,18 @@ export async function getItemStatistics({ startDate, endDate }) {
 // ItemMatchController.findMatches — POST /api/v1/ai/item-matches (시민 전용)
 export async function findItemMatches(lostItemId) {
     const response = await client.post('/api/v1/ai/item-matches', { lostItemId });
+    return response.data;
+}
+
+// ItemMatchController.previewMatches — POST /api/v1/ai/item-matches/preview (시민 전용)
+// 등록 전 챗봇 설명으로만 AI 일치도를 계산한다. DB 물품은 만들지 않는다.
+export async function previewItemMatches({ itemName, category, description, location, occurredAt }) {
+    const response = await client.post('/api/v1/ai/item-matches/preview', {
+        itemName,
+        category,
+        description,
+        location,
+        occurredAt,
+    });
     return response.data;
 }

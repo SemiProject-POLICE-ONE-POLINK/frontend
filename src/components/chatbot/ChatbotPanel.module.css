@@ -111,6 +111,11 @@
     color: var(--color-gold);
 }
 
+.loadError {
+    margin: 0;
+    color: var(--color-crit);
+}
+
 .slots {
     display: flex;
     flex-wrap: wrap;

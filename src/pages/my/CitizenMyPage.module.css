@@ -181,6 +181,13 @@ li:last-child .item {
     border-bottom: 0;
 }
 
+.thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
 .item:hover {
     background: var(--color-surface-2);
 }
