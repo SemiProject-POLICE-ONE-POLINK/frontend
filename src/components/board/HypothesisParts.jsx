@@ -1,4 +1,5 @@
 import { STATEMENT_TYPE_LABEL } from '../../constants/codes';
+import { formatDateTime } from '../../utils/format';
 import styles from './BoardParts.module.css';
 
 // 출처: AI 제안 / 직접 등록 (POL-014 ②)
@@ -24,8 +25,9 @@ export function Confidence({ value }) {
     );
 }
 
-// 근거 자료(증거물·진술 번호)와 정황 문장을 칩으로 보여 준다.
-export function BasisChips({ evidenceIds = [], statementIds = [], circumstances = [], lookup, limit }) {
+// 근거 자료(증거물·진술·수사 기록 번호)와 정황 문장을 칩으로 보여 준다.
+// 수사 기록은 경찰관의 조사 메모라 수사 일시와 내용을 함께 보여 준다.
+export function BasisChips({ evidenceIds = [], statementIds = [], logIds = [], circumstances = [], lookup, limit }) {
     const chips = [
         ...evidenceIds.map((id) => {
             const evidence = lookup?.evidenceMap.get(id);
@@ -39,6 +41,16 @@ export function BasisChips({ evidenceIds = [], statementIds = [], circumstances 
                 cls: styles.kindStatement,
                 title: statement ? `${statement.witnessName} · ${STATEMENT_TYPE_LABEL[statement.statementType] ?? ''}` : `진술 #${id}`,
                 text: statement?.content,
+            };
+        }),
+        ...logIds.map((id) => {
+            const log = lookup?.logMap?.get(id);
+            return {
+                key: `l-${id}`,
+                kind: '수사 기록',
+                cls: styles.kindLog,
+                title: log ? formatDateTime(log.investigatedAt) : `수사 기록 #${id}`,
+                text: log?.content,
             };
         }),
         ...circumstances.map((text) => ({ key: `c-${text}`, kind: '정황', cls: styles.kindEtc, text })),

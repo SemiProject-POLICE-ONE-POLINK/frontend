@@ -1,5 +1,5 @@
 // 수사 자료 조회 결과로 번호→자료 조회표를 만든다. 가설 근거의 번호를 이름으로 보여 줄 때 쓴다.
-export function buildBasisLookup(evidences = [], witnesses = []) {
+export function buildBasisLookup(evidences = [], witnesses = [], logs = []) {
     const evidenceMap = new Map(evidences.map((item) => [item.evidenceId, item]));
     const statementMap = new Map();
     witnesses.forEach((witness) => {
@@ -7,7 +7,8 @@ export function buildBasisLookup(evidences = [], witnesses = []) {
             statementMap.set(statement.statementId, { ...statement, witnessName: witness.name, witnessId: witness.witnessId });
         });
     });
-    return { evidenceMap, statementMap };
+    const logMap = new Map(logs.map((item) => [item.logId, item]));
+    return { evidenceMap, statementMap, logMap };
 }
 
 // 추가 확인 사항은 줄 단위 목록("- 항목")으로 내려온다.

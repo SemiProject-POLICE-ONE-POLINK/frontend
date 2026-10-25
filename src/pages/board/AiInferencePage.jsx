@@ -60,12 +60,14 @@ const edgeLabelOf = (node) => {
     return node.relation === 'support' ? node.edge : '';
 };
 
-// 관계도 노드: 등록 순서(증거물 → 목격자)를 유지하고, 6개를 넘으면 근거·불일치 자료를 남기고 관련 자료를 줄인다(POL-010 처리 조건).
-function buildNodes(materials, candidate) {
+// 관계도 노드: 등록 순서(증거물 → 목격자 → 수사 기록)를 유지하고, 6개를 넘으면 근거·불일치 자료를 남기고 관련 자료를 줄인다(POL-010 처리 조건).
+// 수사 기록은 수가 많아 관계도를 가리기 쉬우므로 가설의 근거로 쓰인 기록만 노드로 보여 준다.
+function buildNodes(materials, logs, candidate) {
     const evidenceIds = new Set(candidate?.evidenceIds ?? []);
     const statementIds = new Set(candidate?.statementIds ?? []);
     const opposingEvidenceIds = new Set(candidate?.opposingEvidenceIds ?? []);
     const opposingStatementIds = new Set(candidate?.opposingStatementIds ?? []);
+    const logIds = new Set(candidate?.logIds ?? []);
     const nodes = [
         ...materials.evidences.map((item) => ({
             id: item.evidenceId,
@@ -86,6 +88,16 @@ function buildNodes(materials, candidate) {
                 witness.statements.some((statement) => opposingStatementIds.has(statement.statementId))
             ),
         })),
+        ...logs
+            .filter((log) => logIds.has(log.logId))
+            .map((log) => ({
+                id: `log-${log.logId}`,
+                name: `수사 기록 ${formatDateTime(log.investigatedAt).slice(5)}`,
+                sub: log.content,
+                icon: 'log',
+                edge: '수사 정황',
+                relation: 'support',
+            })),
     ];
     const isKey = (node) => node.relation !== 'related';
     const relatedShown = nodes.filter((node) => !isKey(node)).slice(0, Math.max(0, MAX_NODES - nodes.filter(isKey).length));
@@ -261,7 +273,7 @@ export default function AiInferencePage() {
     }, [aiRun.unseen, markSeen]);
 
     const data = materials.data;
-    const lookup = data ? buildBasisLookup(data.evidences, data.witnesses) : null;
+    const lookup = data ? buildBasisLookup(data.evidences, data.witnesses, logs) : null;
     const adoptedContents = new Set((data?.adopted ?? []).map((item) => item.content));
     const statementTotal = (data?.witnesses ?? []).reduce((sum, witness) => sum + witness.statements.length, 0);
     const focused = analysis?.candidates[analysis.focus];
@@ -511,7 +523,7 @@ export default function AiInferencePage() {
                                         <h3 className="title3">AI 분석 결과 (사건 관계도)</h3>
                                     </header>
                                     <div className={styles.ncBody}>
-                                        <RelationDiagram nodes={buildNodes(data, focused)} candidate={focused} index={analysis.focus} onOpenFull={() => setFullOpen(true)} />
+                                        <RelationDiagram nodes={buildNodes(data, logs, focused)} candidate={focused} index={analysis.focus} onOpenFull={() => setFullOpen(true)} />
                                         <p className={`${styles.legend} caption1`}>
                                             <span><span className={styles.legendBasis}>━</span> 가설 {analysis.focus + 1}의 근거</span>
                                             <span><span className={styles.legendOppose}>┅</span> AI가 찾은 불일치</span>
@@ -617,6 +629,7 @@ export default function AiInferencePage() {
                                             <BasisChips
                                                 evidenceIds={candidate.evidenceIds}
                                                 statementIds={candidate.statementIds}
+                                                logIds={candidate.logIds}
                                                 lookup={lookup}
                                                 limit={3}
                                             />
