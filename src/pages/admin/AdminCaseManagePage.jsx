@@ -36,8 +36,8 @@ export default function AdminCaseManagePage() {
         setModal(null);
         setNotice(
             assigned
-                ? `담당 경찰을 회원 번호 ${result.assignedOfficerId}(으)로 변경했습니다. 사건 접근 권한도 갱신되었습니다.`
-                : `회원 번호 ${result.assignedOfficerId} 경찰을 배정했습니다. 사건·수사 상태가 ‘수사 중’으로 바뀌었습니다.`
+                ? `담당 경찰 변경이 완료되었습니다: ${result.assignedOfficerName}. 사건 접근 권한도 갱신되었습니다.`
+                : `담당 경찰 배정이 완료되었습니다: ${result.assignedOfficerName}. 사건·수사 상태가 ‘수사 중’으로 바뀌었습니다.`
         );
         reload();
     };
