@@ -32,7 +32,7 @@ function safeServerMessage(data) {
     return message;
 }
 
-// 도메인마다 오류 본문 형식이 달라(status 필드 유무) HTTP status를 우선한다.
+// 서버 오류 응답은 { status, message } 형식이며, 화면 분기 기준은 HTTP status를 사용한다.
 export function normalizeAxiosError(error) {
     if (error instanceof ApiError) {
         return error;
