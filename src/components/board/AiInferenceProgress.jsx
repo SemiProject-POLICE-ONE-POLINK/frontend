@@ -25,7 +25,7 @@ export function AiInferenceProgress({ startedAt, evidenceCount, statementCount }
                     <h3 className="title2" role="status">
                         AI가 사건을 추론하고 있습니다
                     </h3>
-                    <p className={`${styles.muted} body2`}>최대 1~2분 걸릴 수 있습니다.</p>
+                    <p className={`${styles.muted} body2`}>최대 1분 30초까지 걸릴 수 있습니다.</p>
                 </div>
                 <div className={styles.time}>
                     <span className={`${styles.muted} caption1`}>경과 시간</span>
@@ -35,10 +35,10 @@ export function AiInferenceProgress({ startedAt, evidenceCount, statementCount }
             <div className={styles.bar} aria-hidden="true">
                 <span />
             </div>
-            {/* 1분이 지나면 멈춘 것으로 오해하지 않도록 한 번 더 안내한다. 화면은 최대 2분까지 응답을 기다린다. */}
+            {/* 1분이 지나면 멈춘 것으로 오해하지 않도록 한 번 더 안내한다. 화면은 최대 90초까지 응답을 기다린다. */}
             {elapsed >= SLOW_NOTICE_SECONDS && (
                 <p className={`${styles.slow} body2`} role="status">
-                    1분이 지났습니다. 자료가 많으면 2분 가까이 걸릴 수 있으니 조금만 더 기다려 주세요.
+                    1분이 지났습니다. 자료가 많으면 1분 30초 가까이 걸릴 수 있으니 조금만 더 기다려 주세요.
                 </p>
             )}
             <ol className={styles.steps}>
