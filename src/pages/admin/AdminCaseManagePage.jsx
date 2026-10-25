@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { closeCase, getCaseDetail } from '../../api/cases';
+import { cancelCase, closeCase, getCaseDetail } from '../../api/cases';
 import { useAsync } from '../../hooks/useAsync';
 import { useSubmit } from '../../hooks/useSubmit';
 import { CASE_STATUS, CASE_STATUS_LABEL, CASE_TYPE_LABEL } from '../../constants/codes';
@@ -31,6 +31,7 @@ export default function AdminCaseManagePage() {
     const finished = data && (data.status === CASE_STATUS.CLOSED || data.status === CASE_STATUS.CANCELED);
     const assigned = Boolean(data?.assignedOfficerId);
     const closePending = data?.status === CASE_STATUS.INVESTIGATION_DONE;
+    const cancelable = data?.status === CASE_STATUS.WAITING && !assigned;
 
     const handleAssigned = (result) => {
         setModal(null);
@@ -48,6 +49,12 @@ export default function AdminCaseManagePage() {
         reload();
     };
 
+    const handleCanceled = (result) => {
+        setModal(null);
+        setNotice(`사건 접수를 취소했습니다: ${result.cancelReason}`);
+        reload();
+    };
+
     const actions = data && !finished && (
         <>
             {!assigned && <Button onClick={() => setModal('assign')}>담당 경찰 배정</Button>}
@@ -59,7 +66,7 @@ export default function AdminCaseManagePage() {
             <Button variant={closePending ? 'primary' : 'secondary'} onClick={() => setModal(closePending ? 'close' : 'cannotClose')}>
                 사건 종결
             </Button>
-            {!assigned && (
+            {cancelable && (
                 <Button variant="dangerOutline" onClick={() => setModal('cancel')}>
                     접수 취소
                 </Button>
@@ -148,7 +155,12 @@ export default function AdminCaseManagePage() {
                             종결 대기 상태인 사건만 종결할 수 있습니다. 담당 경찰이 수사 보드에서 수사를 종결하면 종결 대기로 바뀝니다.
                         </p>
                     </Modal>
-                    <CancelCaseModal open={modal === 'cancel'} onClose={() => setModal(null)} />
+                    <CancelCaseModal
+                        open={modal === 'cancel'}
+                        caseId={caseId}
+                        onClose={() => setModal(null)}
+                        onCanceled={handleCanceled}
+                    />
                 </>
             )}
         </>
@@ -209,32 +221,73 @@ function CloseCaseModal({ open, caseId, onClose, onClosed }) {
     );
 }
 
-// 접수 취소(ADM-006)는 화면 정의서에 있지만 백엔드 API가 없어 요청을 보내지 않는다.
-function CancelCaseModal({ open, onClose }) {
+// 관리자는 담당 경찰이 배정되지 않은 대기 중 사건의 접수만 취소할 수 있다.
+function CancelCaseModal({ open, caseId, onClose, onCanceled }) {
     const [reason, setReason] = useState('');
+    const { submit, submitting, error, clearError } = useSubmit();
+    const valid = reason.trim().length > 0 && reason.trim().length <= 500;
+
+    const close = () => {
+        setReason('');
+        clearError();
+        onClose();
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+
+        if (!valid) {
+            return;
+        }
+
+        const result = await submit(() => cancelCase(caseId, reason.trim()));
+
+        if (result) {
+            setReason('');
+            onCanceled(result);
+        }
+    };
+
     return (
         <Modal
             open={open}
             title="사건 접수 취소"
-            onClose={onClose}
+            onClose={close}
             footer={
                 <>
-                    <Button variant="secondary" onClick={onClose}>
+                    <Button variant="secondary" onClick={close}>
                         닫기
                     </Button>
-                    <Button variant="dangerOutline" disabled title="접수 취소 API 준비 전">
+                    <Button
+                        type="submit"
+                        form="cancel-case-form"
+                        variant="dangerOutline"
+                        disabled={!valid}
+                        loading={submitting}
+                        loadingText="취소 처리 중…"
+                    >
                         접수 취소
                     </Button>
                 </>
             }
         >
-            <p className={`${modalStyles.warn} body2`}>데이터는 삭제되지 않고 ‘취소’ 상태로 비활성 보관됩니다.</p>
-            <Field label="취소 사유" required hint="예: 중복 접수">
-                {(props) => <Textarea {...props} rows={3} value={reason} onChange={(event) => setReason(event.target.value)} />}
-            </Field>
-            <Alert tone="warn" title="백엔드 API 준비 전">
-                사건 접수 취소 API(예: POST /api/v1/cases/{'{caseId}'}/cancel)가 아직 없어 취소를 처리할 수 없습니다.
-            </Alert>
+            <Stack as="form" id="cancel-case-form" gap={12} onSubmit={handleSubmit} noValidate>
+                <ErrorState error={error} />
+                <p className={`${modalStyles.warn} body2`}>
+                    데이터는 삭제되지 않고 ‘취소’ 상태로 비활성 보관됩니다.
+                </p>
+                <Field label="취소 사유" required hint="500자 이하로 입력해 주세요.">
+                    {(props) => (
+                        <Textarea
+                            {...props}
+                            rows={3}
+                            maxLength={500}
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                        />
+                    )}
+                </Field>
+            </Stack>
         </Modal>
     );
 }

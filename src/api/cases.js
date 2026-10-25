@@ -55,6 +55,14 @@ export async function closeCase(caseId, { result, reason }) {
     return response.data;
 }
 
+// CaseController.cancelCase — POST /api/v1/cases/{caseId}/cancel (관리자 전용)
+export async function cancelCase(caseId, cancelReason) {
+    const response = await client.post(`/api/v1/cases/${encodeURIComponent(caseId)}/cancel`, {
+        cancelReason,
+    });
+    return response.data;
+}
+
 // CaseAiSearchController.searchSimilarCases — POST /api/v1/cases/ai-search (시민 전용)
 export async function searchSimilarCases(situation) {
     const response = await client.post('/api/v1/cases/ai-search', { situation });
