@@ -1075,6 +1075,7 @@
     border-radius: var(--radius-lg);
     background: linear-gradient(145deg, var(--color-navy-2), var(--color-navy));
     color: var(--color-navy-ink);
+    overflow: hidden;
 }
 
 .evdHead {

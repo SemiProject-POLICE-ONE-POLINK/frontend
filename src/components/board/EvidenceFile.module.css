@@ -1,0 +1,61 @@
+.img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    display: block;
+}
+
+.icon {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+}
+
+/* 썸네일 위 얇은 진행 막대: 파일을 받는 중임을 알린다. */
+.loading {
+    position: absolute;
+    left: var(--space-10);
+    right: var(--space-10);
+    bottom: var(--space-10);
+    height: 3px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, transparent, var(--color-navy-ink), transparent);
+    background-size: 200% 100%;
+    animation: fileLoading calc(var(--motion-slow) * 5) linear infinite;
+}
+
+@keyframes fileLoading {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: -100% 0;
+    }
+}
+
+.action {
+    margin-left: auto;
+    padding: var(--space-2) var(--space-10);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-blue);
+    cursor: pointer;
+}
+
+.action:hover {
+    border-color: var(--color-blue);
+}
+
+.error {
+    color: var(--color-crit);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading {
+        animation: none;
+    }
+}

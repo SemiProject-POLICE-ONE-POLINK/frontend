@@ -30,6 +30,19 @@ export async function createEvidence(caseId, { evidenceName, evidenceType, descr
     return response.data;
 }
 
+// EvidenceController.findEvidenceFile — GET /api/v1/cases/{caseId}/evidences/{evidenceId}/file
+// 인증이 필요한 파일이라 <img src>에 주소를 바로 넣지 않고, JWT를 붙여 Blob으로 받는다.
+// fileUrl은 증거물 목록 응답의 값을 그대로 쓰되, 토큰이 다른 곳으로 가지 않도록 증거물 파일 경로만 허용한다.
+const EVIDENCE_FILE_PATH = /^\/api\/v1\/cases\/[^/]+\/evidences\/[^/]+\/file$/;
+
+export async function getEvidenceFile(fileUrl) {
+    if (!EVIDENCE_FILE_PATH.test(fileUrl ?? '')) {
+        throw Object.assign(new Error('첨부 파일 주소를 확인할 수 없습니다.'), { status: 0 });
+    }
+    const response = await client.get(fileUrl, { responseType: 'blob' });
+    return response.data;
+}
+
 // WitnessController.findWitnessList — GET /api/v1/cases/{caseId}/witnesses
 export async function getWitnesses(caseId) {
     const response = await client.get(`${casePath(caseId)}/witnesses`);
