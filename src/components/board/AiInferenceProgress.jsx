@@ -7,10 +7,10 @@ import styles from './AiInferenceProgress.module.css';
 const STEP_STATE_LABEL = { done: '완료', active: '진행 중', wait: '대기' };
 const SLOW_NOTICE_SECONDS = 60;
 
-export function AiInferenceProgress({ startedAt, evidenceCount, statementCount }) {
+export function AiInferenceProgress({ startedAt, evidenceCount, statementCount, logCount }) {
     const elapsed = useElapsed(startedAt, null);
     const steps = [
-        { label: '자료 불러오기', sub: `사건 정보 · 증거물 ${evidenceCount}건 · 진술 ${statementCount}건`, state: 'done' },
+        { label: '자료 불러오기', sub: `사건 정보 · 증거물 ${evidenceCount}건 · 진술 ${statementCount}건 · 수사 기록 ${logCount}건`, state: 'done' },
         { label: 'AI 추론', sub: '관계도 · 불일치 지점 · 가설 최대 3개', state: 'active' },
         { label: '결과 정리', sub: '화면에 표시할 결과 준비', state: 'wait' },
     ];
