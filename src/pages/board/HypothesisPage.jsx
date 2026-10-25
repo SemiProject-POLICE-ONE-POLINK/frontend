@@ -17,17 +17,19 @@ import styles from './Board.module.css';
 const loadHypotheses = (caseId) =>
     Promise.all([getAdoptedHypotheses(caseId), getEvidences(caseId), getWitnesses(caseId)]).then(([adopted, evidences, witnesses]) => ({
         adopted: [...adopted].sort((a, b) => String(b.adoptedAt).localeCompare(String(a.adoptedAt))),
-        lookup: buildBasisLookup(evidences, witnesses),
+        evidences,
+        witnesses,
     }));
 
 // 수사 가설(POL-014): 채택한 가설만 최근 채택 순으로 누적해 보여 준다. 채택한 가설은 수정·삭제하지 않는다.
 export default function HypothesisPage() {
-    const { caseId, board, locked } = useOutletContext();
+    const { caseId, board, logs, locked } = useOutletContext();
     const userId = useAuthStore((state) => state.user?.userId);
     // 체크 변경은 수사 중인 사건의 담당 경찰만 가능하다. 서버도 같은 조건을 403·409로 검사한다.
     const editable = !locked && board.caseInfo?.assignedOfficerId === userId;
     const loader = useCallback(() => loadHypotheses(caseId), [caseId]);
     const { data, error, loading, reload } = useAsync(loader);
+    const lookup = data ? buildBasisLookup(data.evidences, data.witnesses, logs) : null;
 
     if (loading && !data) {
         return <LoadingState />;
@@ -81,8 +83,9 @@ export default function HypothesisPage() {
                                     <BasisChips
                                         evidenceIds={item.basis?.evidenceIds}
                                         statementIds={item.basis?.statementIds}
+                                        logIds={item.basis?.logIds}
                                         circumstances={item.basis?.circumstances}
-                                        lookup={data.lookup}
+                                        lookup={lookup}
                                     />
                                 </div>
                                 {item.reason && (

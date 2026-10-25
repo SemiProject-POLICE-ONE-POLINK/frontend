@@ -96,6 +96,11 @@
     color: var(--color-ok);
 }
 
+.kindLog {
+    background: var(--color-gold-soft);
+    color: var(--color-gold);
+}
+
 .kindEtc {
     background: var(--color-surface-2);
     color: var(--color-ink-2);

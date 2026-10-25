@@ -112,7 +112,8 @@ export default function BoardMainPage() {
     const lookup = hypothesis
         ? buildBasisLookup(
               hypothesis.evidences.map((item) => ({ evidenceId: item.evidenceId, evidenceName: item.name, description: item.description })),
-              hypothesis.statements.map((item) => ({ witnessId: item.statementId, name: item.witnessName, statements: [item] }))
+              hypothesis.statements.map((item) => ({ witnessId: item.statementId, name: item.witnessName, statements: [item] })),
+              hypothesis.logs ?? []
           )
         : null;
 
@@ -210,6 +211,7 @@ export default function BoardMainPage() {
                             <BasisChips
                                 evidenceIds={hypothesis.evidences.map((item) => item.evidenceId)}
                                 statementIds={hypothesis.statements.map((item) => item.statementId)}
+                                logIds={(hypothesis.logs ?? []).map((item) => item.logId)}
                                 circumstances={hypothesis.circumstances}
                                 lookup={lookup}
                                 limit={2}
