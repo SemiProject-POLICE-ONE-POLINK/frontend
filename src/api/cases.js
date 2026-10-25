@@ -1,6 +1,7 @@
 import client from './client';
+import { compactParams } from '../utils/query';
 
-// 사건 목록은 items와 totalElements만 제공한다. 페이지 메타데이터를 임의로 만들지 않는다.
+// 사건 목록과 내 사건 목록은 목록 데이터와 페이지 메타데이터를 함께 제공한다.
 
 // CaseController.createCase — POST /api/v1/cases (시민 전용, 201)
 export async function createCase({ title, caseType, description, occurredAt, location }) {
@@ -15,14 +16,18 @@ export async function createCase({ title, caseType, description, occurredAt, loc
 }
 
 // CaseController.getCases — GET /api/v1/cases (시민은 본인 신고, 경찰·관리자는 전체)
-export async function getCases({ page, size }) {
-    const response = await client.get('/api/v1/cases', { params: { page, size } });
+export async function getCases({ page, size, sort }) {
+    const response = await client.get('/api/v1/cases', {
+        params: compactParams({ page, size, sort }),
+    });
     return response.data;
 }
 
 // CaseController.getMyCases — GET /api/v1/cases/my (시민은 신고 사건, 경찰은 배정 사건)
-export async function getMyCases({ page, size }) {
-    const response = await client.get('/api/v1/cases/my', { params: { page, size } });
+export async function getMyCases({ page, size, sort }) {
+    const response = await client.get('/api/v1/cases/my', {
+        params: compactParams({ page, size, sort }),
+    });
     return response.data;
 }
 
