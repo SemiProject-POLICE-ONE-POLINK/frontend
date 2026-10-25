@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { getItems } from '../../api/items';
 import { useAsync } from '../../hooks/useAsync';
@@ -12,11 +12,11 @@ import Card from '../../components/common/Card';
 import Pagination from '../../components/common/Pagination';
 import StatusBadge from '../../components/common/StatusBadge';
 import Tag from '../../components/common/Tag';
-import Icon from '../../components/common/Icon';
 import { Button } from '../../components/common/Button';
 import { EmptyState, ErrorState, LoadingState } from '../../components/common/Feedback';
 import { Input, Select } from '../../components/common/Form';
 import ItemFormModal from '../../components/items/ItemFormModal';
+import ItemImage from '../../components/items/ItemImage';
 import styles from './Items.module.css';
 
 // 탭별 상태 필터 선택지(CIT-005 ⑥)
@@ -40,6 +40,14 @@ export default function ItemListPage() {
     const category = get('category');
     const date = get('date');
     const status = STATUS_OPTIONS[tab].includes(get('status')) ? get('status') : '';
+    const [keywordInput, setKeywordInput] = useState(keyword);
+    const isComposing = useRef(false);
+
+    useEffect(() => {
+        if (!isComposing.current) {
+            setKeywordInput(keyword);
+        }
+    }, [keyword]);
     // 마이페이지 빠른 실행에서 ?register=LOST|FOUND로 들어오면 등록 팝업을 연다.
     const registerParam = get('register');
     const [registerType, setRegisterType] = useState(isCitizen && ITEM_TYPE[registerParam] ? registerParam : null);
@@ -114,8 +122,23 @@ export default function ItemListPage() {
                         type="search"
                         aria-label="물품 검색어"
                         placeholder="물품명, 특징으로 검색"
-                        value={keyword}
-                        onChange={(event) => update({ q: event.target.value })}
+                        value={keywordInput}
+                        onCompositionStart={() => {
+                            isComposing.current = true;
+                        }}
+                        onCompositionEnd={(event) => {
+                            isComposing.current = false;
+                            const nextKeyword = event.currentTarget.value;
+                            setKeywordInput(nextKeyword);
+                            update({ q: nextKeyword });
+                        }}
+                        onChange={(event) => {
+                            const nextKeyword = event.target.value;
+                            setKeywordInput(nextKeyword);
+                            if (!isComposing.current) {
+                                update({ q: nextKeyword });
+                            }
+                        }}
                     />
                     <Select aria-label="종류" value={category} onChange={(event) => update({ category: event.target.value })}>
                         <option value="">종류 전체</option>
@@ -140,7 +163,14 @@ export default function ItemListPage() {
                         ))}
                     </Select>
                     {filtered && (
-                        <button type="button" className={`${styles.reset} caption2`} onClick={() => update({ q: '', category: '', date: '', status: '' })}>
+                        <button
+                            type="button"
+                            className={`${styles.reset} caption2`}
+                            onClick={() => {
+                                setKeywordInput('');
+                                update({ q: '', category: '', date: '', status: '' });
+                            }}
+                        >
                             조건 초기화
                         </button>
                     )}
@@ -155,9 +185,8 @@ export default function ItemListPage() {
                         {data.items.map((item) => (
                             <li key={item.itemId}>
                                 <Link to={`/items/${item.itemId}`} className={styles.card}>
-                                    {/* imagePath는 서버 로컬 경로일 수 있어 종류 아이콘으로 대신 표시한다. */}
-                                    <span className={styles.thumb} aria-hidden="true">
-                                        <Icon name={item.category} size={44} strokeWidth={1.4} />
+                                    <span className={`${styles.thumb} caption1`} aria-label={`${item.itemName} 이미지`}>
+                                        <ItemImage itemId={item.itemId} alt={`${item.itemName} 이미지`} />
                                     </span>
                                     <span className={styles.cardBody}>
                                         <span className={styles.cardRow}>

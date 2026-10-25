@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { registerItem, updateItem } from '../../api/items';
+import { attachItemImage, registerItem, updateItem } from '../../api/items';
 import { useSubmit } from '../../hooks/useSubmit';
 import { ITEM_CATEGORY_LABEL, ITEM_TYPE } from '../../constants/codes';
 import { todayDate } from '../../utils/format';
@@ -27,10 +27,11 @@ function toForm(item, initial) {
 }
 
 // 분실물·습득물 등록·수정 팝업(CIT-007). 습득물도 같은 양식이며 항목명만 바뀐다.
-// 수정 시 이미지는 상세 화면의 이미지 첨부로 바꾼다.
+// 수정 중 이미지가 비어 있는 본인 분실물도 여기서 바로 선택해 함께 저장할 수 있다.
 export default function ItemFormModal({ open, itemType, item, initial, onClose, onSaved }) {
     const isEdit = Boolean(item);
     const lost = itemType === ITEM_TYPE.LOST;
+    const canPickImage = !isEdit || (lost && !item.imagePath);
     const [form, setForm] = useState(() => toForm(item, initial));
     const [image, setImage] = useState(null);
     const [preview, setPreview] = useState('');
@@ -75,7 +76,14 @@ export default function ItemFormModal({ open, itemType, item, initial, onClose, 
             return;
         }
         const values = trimItemFields(form);
-        const result = await submit(() => (isEdit ? updateItem(item.itemId, values) : registerItem({ itemType, ...values }, image)));
+        const result = await submit(async () => {
+            if (!isEdit) {
+                return registerItem({ itemType, ...values }, image);
+            }
+
+            const updatedItem = await updateItem(item.itemId, values);
+            return image ? attachItemImage(item.itemId, image) : updatedItem;
+        });
         if (result) {
             onSaved(result);
         }
@@ -127,8 +135,13 @@ export default function ItemFormModal({ open, itemType, item, initial, onClose, 
                     <Field label="특징" required className="span-all">
                         {(props) => <Textarea {...props} name="description" rows={3} value={form.description} onChange={handleChange} />}
                     </Field>
-                    {!isEdit && (
-                        <Field label="이미지 (선택)" error={errors.image} hint="PNG·JPG·WEBP 1개, 2MB 이하. 등록 후에도 상세 화면에서 첨부할 수 있습니다." className="span-all">
+                    {canPickImage && (
+                        <Field
+                            label="이미지 (선택)"
+                            error={errors.image}
+                            hint={isEdit ? 'PNG·JPG·WEBP 1개, 2MB 이하. 이미지가 없는 분실물에 추가할 수 있습니다.' : 'PNG·JPG·WEBP 1개, 2MB 이하. 등록 후에도 상세 화면에서 첨부할 수 있습니다.'}
+                            className="span-all"
+                        >
                             {(props) => (
                                 <div className={styles.imgPick}>
                                     <span className={styles.imgThumb}>

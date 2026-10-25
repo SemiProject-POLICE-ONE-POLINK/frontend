@@ -27,7 +27,7 @@ export async function getMyReturnRequestDetail(requestId) {
     return response.data;
 }
 
-// ReturnRequestController.getReturnRequests — GET /api/v1/return-requests (경찰 전용)
+// ReturnRequestController.getReturnRequests — GET /api/v1/return-requests (경찰·관리자 조회)
 export async function getReturnRequests({ status, keyword, page, size }) {
     const response = await client.get('/api/v1/return-requests', {
         params: compactParams({ status, keyword, page, size }),
@@ -35,7 +35,7 @@ export async function getReturnRequests({ status, keyword, page, size }) {
     return response.data;
 }
 
-// ReturnRequestController.getReturnRequestDetail — GET /api/v1/return-requests/{requestId} (경찰 전용)
+// ReturnRequestController.getReturnRequestDetail — GET /api/v1/return-requests/{requestId} (경찰·관리자 조회)
 export async function getReturnRequestDetail(requestId) {
     const response = await client.get(`/api/v1/return-requests/${encodeURIComponent(requestId)}`);
     return response.data;

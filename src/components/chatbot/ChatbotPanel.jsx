@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { findItemMatches, getItems, getMyItems } from '../../api/items';
+import { findItemMatches, getItems, getMyItems, previewItemMatches } from '../../api/items';
 import { useAsync } from '../../hooks/useAsync';
 import { useChatStore } from '../../store/chatStore';
 import { ITEM_CATEGORY_LABEL, ITEM_STATUS, ITEM_TYPE } from '../../constants/codes';
@@ -35,6 +35,7 @@ export default function ChatbotPanel() {
     const lostItems = useAsync(loadLostItems);
     const nextId = useRef(1);
     const logRef = useRef(null);
+    const requestLocked = useRef(false);
     const [messages, setMessages] = useState([GREETING]);
     const [context, setContext] = useState(EMPTY_CONTEXT);
     const [input, setInput] = useState('');
@@ -54,6 +55,20 @@ export default function ChatbotPanel() {
 
     const replace = (id, message) => setMessages((prev) => prev.map((item) => (item.id === id ? { id, ...message } : item)));
 
+    const beginRequest = () => {
+        if (requestLocked.current) {
+            return false;
+        }
+        requestLocked.current = true;
+        setBusy(true);
+        return true;
+    };
+
+    const finishRequest = () => {
+        requestLocked.current = false;
+        setBusy(false);
+    };
+
     const reset = () => {
         setMessages([GREETING]);
         setContext(EMPTY_CONTEXT);
@@ -61,7 +76,9 @@ export default function ChatbotPanel() {
     };
 
     const runAiMatch = async (lostItem) => {
-        setBusy(true);
+        if (!beginRequest()) {
+            return;
+        }
         push({ from: 'me', kind: 'text', text: `${lostItem.itemId} ${lostItem.itemName}(으)로 찾아 주세요` });
         const pendingId = push({ from: 'bot', kind: 'typing' });
         try {
@@ -70,27 +87,42 @@ export default function ChatbotPanel() {
         } catch (error) {
             replace(pendingId, { from: 'bot', kind: 'text', tone: 'error', text: error.message });
         } finally {
-            setBusy(false);
+            finishRequest();
         }
     };
 
     const searchByDescription = async (nextContext) => {
         const pendingId = push({ from: 'bot', kind: 'typing' });
         try {
-            const response = await getItems({
-                itemType: ITEM_TYPE.FOUND,
-                status: ITEM_STATUS.STORED,
-                category: nextContext.category,
-                page: 0,
-                size: CANDIDATE_LIMIT,
-            });
-            replace(pendingId, { from: 'bot', kind: 'candidates', context: nextContext, items: response.items ?? [], total: response.totalElements });
+            const [response, preview] = await Promise.all([
+                getItems({
+                    itemType: ITEM_TYPE.FOUND,
+                    status: ITEM_STATUS.STORED,
+                    keyword: nextContext.word,
+                    location: nextContext.place,
+                    startDate: nextContext.date,
+                    endDate: nextContext.date,
+                    page: 0,
+                    size: CANDIDATE_LIMIT,
+                }),
+                previewItemMatches({
+                    itemName: nextContext.word ?? '분실물',
+                    category: nextContext.category,
+                    description: nextContext.text,
+                    location: nextContext.place,
+                    occurredAt: nextContext.date,
+                }),
+            ]);
+            replace(pendingId, { from: 'bot', kind: 'candidates', context: nextContext, items: response.items ?? [], total: response.totalElements, matches: preview.matches ?? [] });
         } catch (error) {
             replace(pendingId, { from: 'bot', kind: 'text', tone: 'error', text: error.message });
         }
     };
 
     const handleDescription = async (text) => {
+        if (!beginRequest()) {
+            return;
+        }
         const detected = detectCategory(text);
         const nextContext = {
             ...context,
@@ -105,21 +137,29 @@ export default function ChatbotPanel() {
             nextContext.askedCategory = true;
             setContext(nextContext);
             push({ from: 'bot', kind: 'askCategory', text: '어떤 종류의 물건인가요? 아래에서 고르거나 직접 적어 주세요.' });
+            finishRequest();
             return;
         }
         setContext(nextContext);
-        setBusy(true);
-        await searchByDescription(nextContext);
-        setBusy(false);
+        try {
+            await searchByDescription(nextContext);
+        } finally {
+            finishRequest();
+        }
     };
 
     const chooseCategory = async (code) => {
+        if (!beginRequest()) {
+            return;
+        }
         const nextContext = { ...context, category: code };
         push({ from: 'me', kind: 'text', text: ITEM_CATEGORY_LABEL[code] });
         setContext(nextContext);
-        setBusy(true);
-        await searchByDescription(nextContext);
-        setBusy(false);
+        try {
+            await searchByDescription(nextContext);
+        } finally {
+            finishRequest();
+        }
     };
 
     const handleSubmit = (event) => {
@@ -184,6 +224,11 @@ export default function ChatbotPanel() {
                                     </button>
                                 ))}
                             </div>
+                        )}
+                        {lostItems.error && (
+                            <p className={`${styles.loadError} caption1`} role="alert">
+                                등록한 분실물 목록을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.
+                            </p>
                         )}
                     </div>
                     <form className={styles.form} onSubmit={handleSubmit}>
@@ -256,7 +301,8 @@ function ChatMessage({ message, onChooseCategory, onRegister, onReset, onNavigat
 }
 
 function CandidateList({ message, onRegister, onReset, onNavigate, busy }) {
-    const { context, items, total } = message;
+    const { context, items, total, matches = [] } = message;
+    const matchesByItemId = new Map(matches.map((match) => [match.foundItemId, match]));
     return (
         <>
             설명하신 내용을 이렇게 이해했어요.
@@ -270,22 +316,25 @@ function CandidateList({ message, onRegister, onReset, onNavigate, busy }) {
                     <p>
                         같은 종류로 보관 중인 습득물 <b>{total}건</b> 중 최근 {items.length}건이에요.
                     </p>
-                    {items.map((item) => (
-                        <div key={item.itemId} className={styles.mrow}>
-                            <Link className="label" to={`/items/${item.itemId}`} onClick={onNavigate}>
-                                {item.itemName}
-                            </Link>{' '}
-                            <span className={`${styles.code} num caption2`}>{item.itemId}</span>
-                            <p className={`${styles.muted} caption1`}>
-                                {item.location} · <span className="num">{formatDate(item.occurredAt)}</span>
-                            </p>
-                        </div>
-                    ))}
+                    {items.map((item) => {
+                        const match = matchesByItemId.get(item.itemId);
+                        return (
+                            <div key={item.itemId} className={styles.mrow}>
+                                <Link className="label" to={`/items/${item.itemId}`} onClick={onNavigate}>
+                                    {item.itemName}
+                                </Link>{' '}
+                                <span className={`${styles.code} num caption2`}>{item.itemId}</span>
+                                <p className={`${styles.muted} caption1`}>
+                                    {item.location} · <span className="num">{formatDate(item.occurredAt)}</span>
+                                </p>
+                                {match && <p className={`${styles.muted} caption1`}><b>{match.score}% 일치</b> · {match.reason}</p>}
+                            </div>
+                        );
+                    })}
                 </>
             ) : (
                 <p>아직 같은 종류의 보관 중 습득물이 없어요. 분실물로 등록해 두고 나중에 다시 찾아보세요.</p>
             )}
-            <p className={`${styles.muted} caption1`}>조건 검색 결과예요. 분실물로 등록하면 AI가 특징까지 비교해 일치도를 알려 드려요.</p>
             {(!context.place || !context.date) && (
                 <p className={`${styles.muted} caption1`}>
                     {[!context.place && '어디서', !context.date && '언제'].filter(Boolean).join(', ')} 잃어버렸는지 알려 주시면 더 정확해져요.

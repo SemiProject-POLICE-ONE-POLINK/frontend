@@ -1,18 +1,18 @@
-import { useCallback, useState } from 'react';
-import { getItemStatistics } from '../../api/items';
+import { useCallback } from 'react';
+import { getItemStatistics, getItems } from '../../api/items';
 import { useAsync } from '../../hooks/useAsync';
 import { useQueryState } from '../../hooks/useQueryState';
-import { ITEM_CATEGORY_LABEL, ITEM_STATUS, ITEM_STATUS_LABEL } from '../../constants/codes';
-import { formatDate, formatNumber, labelOf, todayDate } from '../../utils/format';
+import { ITEM_CATEGORY_LABEL, ITEM_STATUS, ITEM_STATUS_LABEL, ITEM_TYPE } from '../../constants/codes';
+import { formatNumber, labelOf, todayDate } from '../../utils/format';
 import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
-import { Button } from '../../components/common/Button';
 import { ErrorState, LoadingState } from '../../components/common/Feedback';
 import { Select } from '../../components/common/Form';
-import { BarList, ColumnChart, KpiCard, KpiGrid } from '../../components/common/DataDisplay';
+import { BarList, KpiCard, KpiGrid } from '../../components/common/DataDisplay';
 import { Columns, Stack } from '../../components/common/Layout';
+import styles from './ItemStatsPage.module.css';
 
 const PERIODS = [
     { value: '7', label: '최근 7일' },
@@ -29,11 +29,6 @@ const STATUS_ROWS = [
     { status: ITEM_STATUS.RETURNED, group: '분실물·습득물' },
 ];
 
-const DAILY_COLUMNS = [
-    { key: 'date', header: '일자', mono: true, render: (row) => formatDate(row.date) },
-    { key: 'count', header: '등록 건수', mono: true, align: 'right', render: (row) => formatNumber(row.count) },
-];
-
 function rangeOf(period) {
     if (period === 'all') {
         return { startDate: '', endDate: '' };
@@ -44,11 +39,54 @@ function rangeOf(period) {
     return { startDate: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`, endDate: todayDate() };
 }
 
+async function loadStatistics(period) {
+    const range = rangeOf(period);
+    const statistics = await getItemStatistics(range);
+    const categories = (statistics.categoryCounts ?? []).map((item) => item.category);
+    const countResponses = await Promise.all(
+        categories.flatMap((category) =>
+            [ITEM_TYPE.LOST, ITEM_TYPE.FOUND].map(async (itemType) => {
+                const response = await getItems({ itemType, category, startDate: range.startDate, endDate: range.endDate, page: 0, size: 1 });
+                return { category, itemType, count: response.totalElements ?? 0 };
+            })
+        )
+    );
+    const categoryTypeCounts = categories.map((category) => ({
+        category,
+        lost: countResponses.find((item) => item.category === category && item.itemType === ITEM_TYPE.LOST)?.count ?? 0,
+        found: countResponses.find((item) => item.category === category && item.itemType === ITEM_TYPE.FOUND)?.count ?? 0,
+    }));
+    return { ...statistics, categoryTypeCounts };
+}
+
+function CategoryTypeBars({ items }) {
+    const maxCount = Math.max(...items.flatMap((item) => [item.lost, item.found]), 1);
+    return (
+        <>
+            <p className={styles.legend} aria-label="그래프 범례">
+                <span><i className={styles.lostMark} />분실물</span>
+                <span><i className={styles.foundMark} />습득물</span>
+            </p>
+            <ul className={styles.dualBars}>
+                {items.map((item) => (
+                    <li key={item.category} className={styles.dualBarRow}>
+                        <span className={`${styles.categoryLabel} body2`}>{labelOf(ITEM_CATEGORY_LABEL, item.category)}</span>
+                        <span className={styles.barPair} aria-label={`${labelOf(ITEM_CATEGORY_LABEL, item.category)}: 분실물 ${item.lost}건, 습득물 ${item.found}건`}>
+                            <span className={styles.barTrack}><span className={styles.lostBar} style={{ width: `${(item.lost / maxCount) * 100}%` }} /></span>
+                            <span className={styles.barTrack}><span className={styles.foundBar} style={{ width: `${(item.found / maxCount) * 100}%` }} /></span>
+                        </span>
+                        <span className={`${styles.barCount} body2 num`}>{item.lost}/{item.found}</span>
+                    </li>
+                ))}
+            </ul>
+        </>
+    );
+}
+
 export default function ItemStatsPage() {
     const { get, update } = useQueryState();
     const period = PERIODS.some((option) => option.value === get('period')) ? get('period') : '30';
-    const [showTable, setShowTable] = useState(false);
-    const loader = useCallback(() => getItemStatistics(rangeOf(period)), [period]);
+    const loader = useCallback(() => loadStatistics(period), [period]);
     const { data, error, loading, reload } = useAsync(loader);
 
     const statusColumns = [
@@ -84,37 +122,13 @@ export default function ItemStatsPage() {
                         <KpiCard label="인계 대기" value={data.handoverPendingCount} unit="건" hint="반환 승인 후 인계 전" />
                     </KpiGrid>
                     <Columns>
-                        <Card title="종류별 등록 건수" subtitle="분실물·습득물 합산">
-                            <BarList
-                                items={(data.categoryCounts ?? []).map((item) => ({
-                                    key: item.category,
-                                    label: labelOf(ITEM_CATEGORY_LABEL, item.category),
-                                    value: item.count,
-                                }))}
-                                emptyText="0건"
-                            />
+                        <Card title="종류별 등록 건수">
+                            {(data.categoryTypeCounts ?? []).length > 0 ? <CategoryTypeBars items={data.categoryTypeCounts} /> : <BarList items={[]} emptyText="0건" />}
                         </Card>
                         <Card title="처리 상태별 현황" padded={false}>
                             <DataTable caption="처리 상태별 현황" columns={statusColumns} rows={STATUS_ROWS} rowKey={(row) => row.status} />
                         </Card>
                     </Columns>
-                    <Card
-                        title="일별 등록 추이"
-                        actions={
-                            <Button size="sm" variant="secondary" aria-pressed={showTable} onClick={() => setShowTable((value) => !value)}>
-                                {showTable ? '차트로 보기' : '표로 보기'}
-                            </Button>
-                        }
-                    >
-                        {showTable ? (
-                            <DataTable caption="일별 등록 건수" columns={DAILY_COLUMNS} rows={data.dailyCounts ?? []} rowKey={(row) => row.date} emptyText="0건" />
-                        ) : (
-                            <ColumnChart
-                                label="일별 물품 등록 건수"
-                                items={(data.dailyCounts ?? []).map((item) => ({ key: item.date, label: formatDate(item.date), value: item.count }))}
-                            />
-                        )}
-                    </Card>
                 </Stack>
             )}
         </>
