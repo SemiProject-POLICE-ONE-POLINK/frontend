@@ -812,6 +812,8 @@
     );
     border: 2.5px solid color-mix(in srgb, var(--color-crit) 55%, transparent);
     box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-crit) 7%, transparent);
+    font: inherit;
+    cursor: pointer;
 }
 
 .relHead {
@@ -823,9 +825,13 @@
     color: var(--color-ink);
     font-weight: 700;
     display: -webkit-box;
-    -webkit-line-clamp: 4;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.fullHypothesis {
+    white-space: pre-wrap;
 }
 
 .relNode {
