@@ -49,7 +49,7 @@ export default function PoliceReturnListPage() {
 
     const columns = [
         { key: 'requestId', header: '신청번호', mono: true, render: (row) => requestNo(row.requestId) },
-        { key: 'requesterId', header: '신청인', render: (row) => `회원 ${row.requesterId}` },
+        { key: 'requesterName', header: '신청인', render: (row) => row.requesterName ?? `회원 ${row.requesterId}` },
         {
             key: 'lost',
             header: '분실물',

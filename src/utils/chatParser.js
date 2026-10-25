@@ -48,14 +48,37 @@ export function detectDate(text) {
     return null;
 }
 
-// 장소 앞에 붙은 시간 표현(어제, 3일 전 등)은 장소에서 뺀다.
-const TIME_WORDS = /^(?:오늘|어제|그저께|그제|아까|방금|\d+\s*일\s*전|\d{1,2}\s*월\s*\d{1,2}\s*일)\s*/;
+// 날짜 표현은 장소를 찾기 전에 문장 전체에서 제거한다. 예를 들어
+// "10월 25일 엘리베이터에서"는 "엘리베이터"만 장소로 인식해야 한다.
+const TIME_WORDS = /오늘|어제|그저께|그제|아까|방금|\d+\s*일\s*전|\d{1,2}\s*월\s*\d{1,2}\s*일/g;
 
 export function detectPlace(text) {
-    const match = text.match(/([가-힣A-Za-z0-9]+(?:\s?[가-힣A-Za-z0-9]+)?)\s*(?:에서|근처|앞에서|쪽에서|부근)/);
+    const withoutTime = text.replace(TIME_WORDS, ' ').replace(/\s+/g, ' ').trim();
+    // 조사 "에"도 지원해 "엘리베이터에 10월 25일" 같은 자연어 입력을 처리한다.
+    // 조사 바로 앞의 마지막 단어만 장소로 사용해, 물품명까지 장소에 섞이지 않게 한다.
+    const match = withoutTime.match(/([가-힣A-Za-z0-9]+)\s*(?:에서|근처|앞에서|쪽에서|부근|에(?=\s|$))/);
     if (!match) {
         return null;
     }
-    const place = match[1].replace(TIME_WORDS, '').trim();
-    return place || null;
+    return match[1] || null;
+}
+
+// 물품명·장소·날짜·조사·서술어를 제외하고, 색상·재질·무늬처럼 비교에 쓸 특징 단어만 남긴다.
+// 완전한 자연어 분석은 아니지만 "하얀색 가방을 10월 25일 엘리베이터에서" 같은 입력에서
+// "하얀색"을 안정적으로 분리해 습득물 설명과 비교할 수 있다.
+const FEATURE_FILLER_WORDS = new Set([
+    '잃어버림', '잃어버렸', '잃어버렸어요', '분실', '찾아줘', '찾아주세요', '물건', '물품', '에서', '근처', '앞', '쪽', '부근', '에',
+]);
+
+export function detectFeatureTerms(text, { word, place } = {}) {
+    const withoutKnownFields = text
+        .replace(TIME_WORDS, ' ')
+        .replace(place ?? '', ' ')
+        .replace(word ?? '', ' ');
+
+    return [...new Set(
+        (withoutKnownFields.match(/[가-힣A-Za-z0-9]+/g) ?? [])
+            .map((term) => term.replace(/(?:을|를|이|가|은|는|에|의|과|와|도|로|으로)$/u, ''))
+            .filter((term) => term.length > 1 && !FEATURE_FILLER_WORDS.has(term))
+    )].slice(0, 4);
 }

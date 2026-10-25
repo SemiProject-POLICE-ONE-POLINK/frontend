@@ -5,7 +5,7 @@ import { useAsync } from '../../hooks/useAsync';
 import { useChatStore } from '../../store/chatStore';
 import { ITEM_CATEGORY_LABEL, ITEM_STATUS, ITEM_TYPE } from '../../constants/codes';
 import { formatDate, labelOf } from '../../utils/format';
-import { detectCategory, detectDate, detectPlace } from '../../utils/chatParser';
+import { detectCategory, detectDate, detectFeatureTerms, detectPlace } from '../../utils/chatParser';
 import Icon, { Emblem } from '../common/Icon';
 import ItemFormModal from '../items/ItemFormModal';
 import styles from './ChatbotPanel.module.css';
@@ -18,7 +18,7 @@ const GREETING = {
     text: '안녕하세요, 분실물 찾기 도우미예요. 잃어버린 물건을 편하게 설명해 주세요. 보관 중인 습득물과 비교해 비슷한 물품을 찾아 드릴게요.',
     hint: '예: 어제 청솔역 근처에서 분홍색 휴대폰을 잃어버렸어요. 토끼 스트랩이 달려 있어요.',
 };
-const EMPTY_CONTEXT = { text: '', category: null, word: null, date: null, place: null, askedCategory: false };
+const EMPTY_CONTEXT = { text: '', category: null, word: null, date: null, place: null, featureTerms: [], askedCategory: false };
 
 const loadLostItems = () =>
     getMyItems({ page: 0, size: 50 }).then((response) =>
@@ -98,12 +98,12 @@ export default function ChatbotPanel() {
                 getItems({
                     itemType: ITEM_TYPE.FOUND,
                     status: ITEM_STATUS.STORED,
-                    keyword: nextContext.word,
+                    category: nextContext.category,
                     location: nextContext.place,
                     startDate: nextContext.date,
                     endDate: nextContext.date,
                     page: 0,
-                    size: CANDIDATE_LIMIT,
+                    size: 100,
                 }),
                 previewItemMatches({
                     itemName: nextContext.word ?? '분실물',
@@ -113,7 +113,20 @@ export default function ChatbotPanel() {
                     occurredAt: nextContext.date,
                 }),
             ]);
-            replace(pendingId, { from: 'bot', kind: 'candidates', context: nextContext, items: response.items ?? [], total: response.totalElements, matches: preview.matches ?? [] });
+            const candidates = (response.items ?? []).filter((item) => {
+                const searchable = `${item.itemName} ${item.description}`.toLowerCase();
+                const nameMatches = !nextContext.word || searchable.includes(nextContext.word.toLowerCase());
+                const featuresMatch = (nextContext.featureTerms ?? []).every((term) => searchable.includes(term.toLowerCase()));
+                return nameMatches && featuresMatch;
+            });
+            replace(pendingId, {
+                from: 'bot',
+                kind: 'candidates',
+                context: nextContext,
+                items: candidates.slice(0, CANDIDATE_LIMIT),
+                total: candidates.length,
+                matches: preview.matches ?? [],
+            });
         } catch (error) {
             replace(pendingId, { from: 'bot', kind: 'text', tone: 'error', text: error.message });
         }
@@ -124,13 +137,18 @@ export default function ChatbotPanel() {
             return;
         }
         const detected = detectCategory(text);
+        const detectedDate = detectDate(text) ?? context.date;
+        const detectedPlace = detectPlace(text) ?? context.place;
+        const detectedWord = context.word ?? detected?.word ?? null;
+        const detectedFeatures = detectFeatureTerms(text, { word: detectedWord, place: detectedPlace });
         const nextContext = {
             ...context,
             text: `${context.text} ${text}`.trim(),
             category: context.category ?? detected?.category ?? null,
-            word: context.word ?? detected?.word ?? null,
-            date: detectDate(text) ?? context.date,
-            place: detectPlace(text) ?? context.place,
+            word: detectedWord,
+            date: detectedDate,
+            place: detectedPlace,
+            featureTerms: [...new Set([...(context.featureTerms ?? []), ...detectedFeatures])],
         };
         push({ from: 'me', kind: 'text', text });
         if (!nextContext.category && !nextContext.askedCategory) {
@@ -308,13 +326,15 @@ function CandidateList({ message, onRegister, onReset, onNavigate, busy }) {
             설명하신 내용을 이렇게 이해했어요.
             <div className={styles.slots}>
                 <span className="caption2">종류: {labelOf(ITEM_CATEGORY_LABEL, context.category) === '-' ? '모름' : labelOf(ITEM_CATEGORY_LABEL, context.category)}</span>
+                <span className="caption2">물품명: {context.word ?? '미입력'}</span>
+                <span className="caption2">특징: {context.featureTerms?.length ? context.featureTerms.join(', ') : '미입력'}</span>
                 <span className="caption2">장소: {context.place ?? '미입력'}</span>
                 <span className="caption2">날짜: {context.date ?? '미입력'}</span>
             </div>
             {items.length > 0 ? (
                 <>
                     <p>
-                        같은 종류로 보관 중인 습득물 <b>{total}건</b> 중 최근 {items.length}건이에요.
+                        입력한 조건과 일치하는 보관 중 습득물 <b>{total}건</b> 중 최근 {items.length}건이에요.
                     </p>
                     {items.map((item) => {
                         const match = matchesByItemId.get(item.itemId);
@@ -333,7 +353,7 @@ function CandidateList({ message, onRegister, onReset, onNavigate, busy }) {
                     })}
                 </>
             ) : (
-                <p>아직 같은 종류의 보관 중 습득물이 없어요. 분실물로 등록해 두고 나중에 다시 찾아보세요.</p>
+                <p>입력한 이름·특징·장소·날짜 조건에 맞는 보관 중 습득물이 없어요. 분실물로 등록해 두고 나중에 다시 찾아보세요.</p>
             )}
             {(!context.place || !context.date) && (
                 <p className={`${styles.muted} caption1`}>
